@@ -1,1 +1,1 @@
-nvcc ./src/main.cu -I./src/vendor/ -o Raytracer && ./Raytracer
+nvcc ./src/main.cu -I./src/vendor/ -o Raytracer.ds && ./Raytracer.ds
