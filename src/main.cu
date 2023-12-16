@@ -12,6 +12,7 @@
 #include "hittables/hittable_list.h"
 #include "hittables/hittable.h"
 #include "hittables/sphere.h"
+#include "hittables/cube.h"
 
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/quaternion.hpp"
@@ -48,12 +49,12 @@ __global__ void kernel(pixel* image, int width, int height, glm::vec3 camPos, gl
         IntersectInfo info;
         if(!(*world)->intersect(ray, info))
         {
-            glm::vec3 skyColor{ 0.0f, 0.0f, 0.0f };
+            glm::vec3 skyColor{ 0.52f, 0.80f, 0.92f };
             result += skyColor * multiplier;
             break;
         }
 
-        glm::vec3 lightDir = glm::normalize(glm::vec3{ -0.75f, 0.45f, 0.25f });
+        glm::vec3 lightDir = glm::normalize(glm::vec3{ -0.75f, 0.45f, -0.5f });
         float lightIntensity = max(glm::dot(info.hit.normal, -lightDir), 0.0f);
         result += info.hit.color * lightIntensity * multiplier;
 
@@ -79,6 +80,7 @@ __global__ void createWorld(Hittable** d_list, Hittable** d_world)
 
     *(d_list)     = new Sphere(glm::vec3{ 0.0f,  0.5f, 3.5f }, 0.5f, glm::vec3{ 1.0f, 0.0f, 1.0f }); //0);
     *(d_list + 1) = new Sphere(glm::vec3{ 0.0f, -9.0f, 3.5f }, 9.0f, glm::vec3{ 0.2f, 0.3f, 0.9f }); //0);
+    *(d_list + 2) = new Cube(glm::vec3{ 2.0f,  2.0f, 2.0f }, glm::vec3{ 0.5f, 0.5f, 0.5f }, glm::vec3{ 0.8f, 0.6f, 0.2f });
     *d_world      = new HittableList(d_list, 2);
 }
 
@@ -95,13 +97,13 @@ int main(int argc, char **argv)
 	cudaMalloc(&d_image, totalImageBytes);
 
 
-    // Settup
+    // Setup
     Camera camera(60.0f, width, height, 0.01f, 1000.0f);
 
 
     // Create World
     Hittable** d_list;
-    cudaMalloc((void**)&d_list, 2 * sizeof(Hittable*));
+    cudaMalloc((void**)&d_list, 3 * sizeof(Hittable*));
 
     Hittable** d_world;
     cudaMalloc((void**)&d_world, sizeof(Hittable*));
