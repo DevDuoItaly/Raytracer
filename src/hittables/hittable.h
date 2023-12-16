@@ -1,14 +1,9 @@
-#include "glm/glm.hpp"
+#pragma once 
+
+#include "../structs.h"
 
 class Hittable
 {
 public:
-    Hittable(const glm::vec3& position, uint8_t materialIndx)
-        : m_Position(position), m_MaterialIndx(materialIndx) {}
-    
-    virtual bool intersect(const Ray& ray, intersectInfo& info);
-
-protected:
-    glm::vec3 m_Position;
-    uint8_t m_MaterialIndx;
+    __device__ virtual bool intersect(const Ray& ray, IntersectInfo& info) const = 0;
 };
