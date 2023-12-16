@@ -1,138 +1,28 @@
+#include <iostream>
 #include <stdio.h>
 #include <string>
 #include <math.h>
-#include <iostream>
+#include <vector>
+
+#include "structs.h"
 
 #include "camera.h"
 #include "ray.h"
+
+#include "hittables/hittable_list.h"
+#include "hittables/hittable.h"
+#include "hittables/sphere.h"
 
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/quaternion.hpp"
 #include "glm/gtx/quaternion.hpp"
 #include "glm/glm.hpp"
 
-struct pixel
-{
-    unsigned char x, y, z;
-
-    __host__ __device__ void Set(const glm::vec3& c)
-    {
-        x = (unsigned char)(c.x * 255.0f);
-        y = (unsigned char)(c.y * 255.0f);
-        z = (unsigned char)(c.z * 255.0f);
-    }
-};
+inline void registerToWorld(std::vector<Hittable*>& world, uint32_t& worldSize, Hittable& obj, size_t objSize);
 
 void writePPM(const char* path, pixel* img, int width, int height);
 
-struct RayHit
-{
-	glm::vec3 position = { 0.0f, 0.0f, 0.0f };
-    glm::vec3 normal   = { 0.0f, 0.0f, 0.0f };
-    glm::vec3 color    = { 0.0f, 0.0f, 0.0f };
-    float distance = -1;
-};
-
-struct intersectInfo
-{
-    RayHit hit;
-    uint32_t objectIndx = 0;
-};
-
-/*
-__device__ vec3 calculateCubeNormal(const vec3& hitPoint, const vec3& cubeMin, const vec3& cubeMax, float bias = 1e-4f) {
-    vec3 normal = {0, 0, 0};
-    if (fabs(hitPoint.x - cubeMin.x) < bias) normal.x = -1;
-    else if (fabs(hitPoint.x - cubeMax.x) < bias) normal.x = 1;
-    else if (fabs(hitPoint.y - cubeMin.y) < bias) normal.y = -1;
-    else if (fabs(hitPoint.y - cubeMax.y) < bias) normal.y = 1;
-    else if (fabs(hitPoint.z - cubeMin.z) < bias) normal.z = -1;
-    else if (fabs(hitPoint.z - cubeMax.z) < bias) normal.z = 1;
-
-    return normal;
-}
-
-__device__ bool intersectCube(const vec3& rayOrigin, const vec3& rayDirection, vec3& hitPoint, vec3& normal, const vec3& cubeMin, const vec3& cubeMax) {
-    float tMin = -INFINITY;
-    float tMax = INFINITY;
-
-    for (int i = 0; i < 3; i++) {
-        float originComponent = (i == 0) ? rayOrigin.x : ((i == 1) ? rayOrigin.y : rayOrigin.z);
-        float directionComponent = (i == 0) ? rayDirection.x : ((i == 1) ? rayDirection.y : rayDirection.z);
-        float cubeMinComponent = (i == 0) ? cubeMin.x : ((i == 1) ? cubeMin.y : cubeMin.z);
-        float cubeMaxComponent = (i == 0) ? cubeMax.x : ((i == 1) ? cubeMax.y : cubeMax.z);
-
-        if (fabs(directionComponent) < 1e-8) {
-            // se non c'è intersezione
-            if (originComponent < cubeMinComponent || originComponent > cubeMaxComponent) return false;
-        } else {
-            float ood = 1.0f / directionComponent;
-            float t1 = (cubeMinComponent - originComponent) * ood;
-            float t2 = (cubeMaxComponent - originComponent) * ood;
-            if (t1 > t2) {
-                float temp = t1;
-                t1 = t2;
-                t2 = temp;
-            }
-            tMin = max(tMin, t1);
-            tMax = min(tMax, t2);
-            if (tMin > tMax) return false;
-        }
-    }
-
-    // Il raggio hitta
-    hitPoint = add(rayOrigin, mul(rayDirection, tMin));
-    normal = calculateCubeNormal(hitPoint, cubeMin, cubeMax);
-
-    return true;
-}
-*/
-
-__device__ bool intersectSphere(const Ray& ray, glm::vec3& color, glm::vec3& hitPoint, float& distance, glm::vec3& normal, const glm::vec3& sphereOrigin, const float sphereRadius)
-{
-    glm::vec3 origin = ray.Origin - sphereOrigin;
-
-	float a = glm::dot(ray.Direction, ray.Direction);
-	float b = 2.0f * glm::dot(origin, ray.Direction);
-	float c = glm::dot(origin, origin) - sphereRadius * sphereRadius;
-	
-	float discriminant = b * b - 4.0f * a * c;
-	
-	if (discriminant < 0.0f)
-		return false;
-
-	distance = (-b - sqrt(discriminant)) / (2.0f * a);
-	hitPoint = origin + ray.Direction * distance;
-	normal = glm::normalize(hitPoint);
-    hitPoint += sphereOrigin;
-	return true;
-}
-
-__device__ RayHit TraceRay(const Ray& ray)
-{
-    // vec3 cubeMin = { 0.4f, 0.4f, 0.4f };
-    // vec3 cubeMax = { 1.0f, -1.0f, 1.0f };
-
-    glm::vec3 s_origin{ 0.0f, 0.0f, -5.0f };
-    float radius = 1.0f;
-
-    glm::vec3 color, hitPoint, normal;
-    float distance;
-
-    RayHit hit;
-    if (intersectSphere(ray, color, hitPoint, distance, normal, s_origin, radius))
-    {
-        hit.distance = distance;
-        hit.position = hitPoint;
-        hit.normal   = normal;
-        hit.color    = { 1.0f, 0.0f, 1.0f };
-        return hit;
-    }
-
-    return hit;
-}
-
-__global__ void kernel(pixel* image, int width, int height, glm::vec3 camPos, glm::mat4 invPerspective, glm::mat4 invView)
+__global__ void kernel(pixel* image, int width, int height, glm::vec3 camPos, glm::mat4 invPerspective, glm::mat4 invView, Hittable** world)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -152,25 +42,25 @@ __global__ void kernel(pixel* image, int width, int height, glm::vec3 camPos, gl
     glm::vec3 result(0.0f);
     float multiplier = 1.0f;
 
-	int bounces = 3;
+	int bounces = 2;
 	for (int i = 0; i < bounces; ++i)
 	{
-        RayHit hit = TraceRay(ray);
-        if(hit.distance < 0.0f)
+        IntersectInfo info;
+        if(!(*world)->intersect(ray, info))
         {
             glm::vec3 skyColor{ 0.0f, 0.0f, 0.0f };
             result += skyColor * multiplier;
             break;
         }
 
-        glm::vec3 lightDir = glm::normalize(glm::vec3{ -0.1f, 0.15f, 0.0f });
-        float lightIntensity = max(glm::dot(hit.normal, -lightDir), 0.0f);
-        result += hit.color * lightIntensity * multiplier;
+        glm::vec3 lightDir = glm::normalize(glm::vec3{ -0.75f, 0.45f, 0.25f });
+        float lightIntensity = max(glm::dot(info.hit.normal, -lightDir), 0.0f);
+        result += info.hit.color * lightIntensity * multiplier;
 
-        multiplier *= 0.7f;
+        multiplier *= 0.45f;
 
-		ray.Origin = hit.position + hit.normal * 0.0001f;
-        ray.Direction = glm::reflect(rayDirection, hit.normal);
+		ray.Origin = info.hit.position + info.hit.normal * 0.0001f;
+        ray.Direction = glm::reflect(ray.Direction, info.hit.normal + info.Roughness);
 		//ray.Direction = glm::reflect(ray.Direction,
 		//	payload.WorldNormal + material.Roughness * Walnut::Random::Vec3(-0.5f, 0.5f));
         //
@@ -180,6 +70,16 @@ __global__ void kernel(pixel* image, int width, int height, glm::vec3 camPos, gl
     result = glm::clamp(result, glm::vec3(0.0f), glm::vec3(1.0f));
 
     image[x + y * width].Set(result);
+}
+
+__global__ void createWorld(Hittable** d_list, Hittable** d_world)
+{
+    if (threadIdx.x != 0 || blockIdx.x != 0)
+        return;
+
+    *(d_list)     = new Sphere(glm::vec3{ 0.0f,  0.5f, 3.5f }, 0.5f, glm::vec3{ 1.0f, 0.0f, 1.0f }); //0);
+    *(d_list + 1) = new Sphere(glm::vec3{ 0.0f, -9.0f, 3.5f }, 9.0f, glm::vec3{ 0.2f, 0.3f, 0.9f }); //0);
+    *d_world      = new HittableList(d_list, 2);
 }
 
 int main(int argc, char **argv) 
@@ -193,17 +93,31 @@ int main(int argc, char **argv)
     
 	pixel* d_image;
 	cudaMalloc(&d_image, totalImageBytes);
-	
+
+
     // Settup
     Camera camera(60.0f, width, height, 0.01f, 1000.0f);
-    
+
+
+    // Create World
+    Hittable** d_list;
+    cudaMalloc((void**)&d_list, 2 * sizeof(Hittable*));
+
+    Hittable** d_world;
+    cudaMalloc((void**)&d_world, sizeof(Hittable*));
+
+    createWorld<<<1, 1>>>(d_list, d_world);
+    cudaDeviceSynchronize();
+
+
     // Raytrace
 	dim3 BlockSize(16, 16, 1);
 	dim3 GridSize((width + 15) / 16, (height + 15) / 16, 1);
     
-	kernel<<<GridSize, BlockSize>>>(d_image, width, height, camera.GetPosition(), camera.GetInverseProjectionMatrix(), camera.GetInverseViewMatrix());
+	kernel<<<GridSize, BlockSize>>>(d_image, width, height, camera.GetPosition(), camera.GetInverseProjectionMatrix(), camera.GetInverseViewMatrix(), d_world);
 	cudaMemcpy(h_image, d_image, totalImageBytes, cudaMemcpyDeviceToHost);
-	
+
+
     // Saving and closing
 	writePPM("output.ppm", h_image, width, height);
 	cudaFree(d_image);

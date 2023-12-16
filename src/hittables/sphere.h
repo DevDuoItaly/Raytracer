@@ -1,14 +1,16 @@
+#pragma once
+
 #include "hittable.h"
 
-class Sphere : Hittable
+class Sphere : public Hittable
 {
 public:
-    Sphere(const glm::vec3& position, uint8_t materialIndx)
-        : Hittable(position, materialIndx) {}
+    __device__ Sphere(const glm::vec3& position, float radius, const glm::vec3& color) //uint8_t materialIndx)
+        : m_Position(position), m_Radius(radius), m_Color(color) {} //m_MaterialIndx(materialIndx) {}
     
-    bool intersect(const Ray& ray, intersectInfo& info)
+    __device__ virtual bool intersect(const Ray& ray, IntersectInfo& info) const
     {
-        glm::vec3 origin = ray.Origin - m_Position;
+        glm::vec3 origin = ray.Origin + m_Position;
 
         float a = glm::dot(ray.Direction, ray.Direction);
         float b = 2.0f * glm::dot(origin, ray.Direction);
@@ -19,13 +21,23 @@ public:
         if (discriminant < 0.0f)
             return false;
 
-        distance = (-b - sqrt(discriminant)) / (2.0f * a);
-        hitPoint = origin + ray.Direction * distance;
-        normal = glm::normalize(hitPoint);
-        hitPoint += m_Position;
+        float dist = (-b - sqrt(discriminant)) / (2.0f * a);
+        if(dist < 0.0f)
+            return false;
+
+        info.hit.distance = dist;
+        info.hit.position = origin + ray.Direction * dist;
+        info.hit.normal = glm::normalize(info.hit.position);
+        info.hit.position += m_Position;
+        info.hit.color = m_Color;
         return true;
     }
 
 private:
+    glm::vec3 m_Position;
     float m_Radius;
+
+    glm::vec3 m_Color;
+
+    // float m_MaterialIndx;
 };
