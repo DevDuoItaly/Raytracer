@@ -6,25 +6,25 @@
 class Cube : public Hittable
 {
 public:
-    __device__ Cube(const glm::vec3& position, const glm::vec3& size, const glm::vec3& color)
-        : m_Position(position), m_Size(size), m_Color(color) {}
-
-    __device__ virtual bool intersect(const Ray& ray, IntersectInfo& info) const
+    __device__ Cube(const glm::vec3& position, const glm::vec3& size, uint32_t materialIndx)
+        : m_Position(position), m_Size(size), m_MaterialIndx(materialIndx) {}
+    
+    __device__ virtual bool intersect(const Ray& ray, RayHit& hit) const
     {
-        glm::vec3 invDir = 1.0f / ray.Direction;
-        glm::vec3 t0 = (m_Position - ray.Origin) * invDir;
-        glm::vec3 t1 = (m_Position + m_Size - ray.Origin) * invDir;
+        glm::vec3 invDir = 1.0f / ray.direction;
+        glm::vec3 t0 = (m_Position - ray.origin) * invDir;
+        glm::vec3 t1 = (m_Position + m_Size - ray.origin) * invDir;
 
         glm::vec3 tmin = glm::min(t0, t1);
         glm::vec3 tmax = glm::max(t0, t1);
 
         float tMin = glm::max(glm::max(tmin.x, tmin.y), tmin.z);
         float tMax = glm::min(glm::min(tmax.x, tmax.y), tmax.z);
-
+        
         if (tMax < 0 || tMin > tMax)
             return false;
 
-        glm::vec3 hitPoint = ray.Origin + ray.Direction * tMin;
+        glm::vec3 hitPoint = ray.origin + ray.direction * tMin;
         glm::vec3 normal;
 
         if (glm::abs(hitPoint.x - m_Position.x) < 1e-4)
@@ -39,11 +39,10 @@ public:
             normal = glm::vec3(0, 0, -1);
         else
             normal = glm::vec3(0, 0, 1);
-
-        info.hit.distance = tMin;
-        info.hit.position = hitPoint;
-        info.hit.normal = normal;
-        info.hit.color = m_Color;
+        hit.distance     = tMin;
+        hit.position     = hitPoint;
+        hit.normal       = normal;
+        hit.materialIndx = m_MaterialIndx;
 
         return true;
     }
@@ -51,5 +50,5 @@ public:
 private:
     glm::vec3 m_Position;
     glm::vec3 m_Size;
-    glm::vec3 m_Color;
+    uint32_t  m_MaterialIndx;
 };

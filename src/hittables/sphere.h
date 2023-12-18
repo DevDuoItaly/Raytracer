@@ -5,15 +5,15 @@
 class Sphere : public Hittable
 {
 public:
-    __device__ Sphere(const glm::vec3& position, float radius, const glm::vec3& color) //uint8_t materialIndx)
-        : m_Position(position), m_Radius(radius), m_Color(color) {} //m_MaterialIndx(materialIndx) {}
+    __device__ Sphere(const glm::vec3& position, const float radius, uint8_t materialIndx)
+        : m_Position(position), m_Radius(radius), m_MaterialIndx(materialIndx) {}
     
-    __device__ virtual bool intersect(const Ray& ray, IntersectInfo& info) const
+    __device__ virtual bool intersect(const Ray& ray, RayHit& hit) const
     {
-        glm::vec3 origin = ray.Origin + m_Position;
+        glm::vec3 origin = ray.origin + m_Position;
 
-        float a = glm::dot(ray.Direction, ray.Direction);
-        float b = 2.0f * glm::dot(origin, ray.Direction);
+        float a = glm::dot(ray.direction, ray.direction);
+        float b = 2.0f * glm::dot(origin, ray.direction);
         float c = glm::dot(origin, origin) - m_Radius * m_Radius;
         
         float discriminant = b * b - 4.0f * a * c;
@@ -21,23 +21,20 @@ public:
         if (discriminant < 0.0f)
             return false;
 
-        float dist = (-b - sqrt(discriminant)) / (2.0f * a);
-        if(dist < 0.0f)
+        hit.distance = (-b - sqrt(discriminant)) / (2.0f * a);
+        if(hit.distance <= 0)
             return false;
 
-        info.hit.distance = dist;
-        info.hit.position = origin + ray.Direction * dist;
-        info.hit.normal = glm::normalize(info.hit.position);
-        info.hit.position += m_Position;
-        info.hit.color = m_Color;
+        hit.position = origin + ray.direction * hit.distance;
+        hit.normal = glm::normalize(hit.position);
+        hit.position += m_Position;
+        hit.materialIndx = m_MaterialIndx;
         return true;
     }
 
 private:
-    glm::vec3 m_Position;
-    float m_Radius;
+    glm::vec3 m_Position{ 0.0f, 0.0f, 0.0f };
+    float m_Radius     = -1.0f;
 
-    glm::vec3 m_Color;
-
-    // float m_MaterialIndx;
+    int m_MaterialIndx = -1;
 };

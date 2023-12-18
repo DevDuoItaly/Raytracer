@@ -4,9 +4,9 @@
 
 struct pixel
 {
-    unsigned char x, y, z;
+    unsigned char x = 0, y = 0, z = 0;
 
-    __host__ __device__ void Set(const glm::vec3& c)
+    __device__ void Set(const glm::vec3& c)
     {
         x = (unsigned char)(c.x * 255.0f);
         y = (unsigned char)(c.y * 255.0f);
@@ -14,30 +14,40 @@ struct pixel
     }
 };
 
-struct RayHit
+struct Ray
 {
-	glm::vec3 position = { 0.0f, 0.0f, 0.0f };
-    glm::vec3 normal   = { 0.0f, 0.0f, 0.0f };
-    glm::vec3 color    = { 0.0f, 0.0f, 0.0f };
-    float distance = -1;
+    glm::vec3 origin   { 0.0f, 0.0f,  0.0f };
+    glm::vec3 direction{ 0.0f, 0.0f, -1.0f };
 };
 
-struct IntersectInfo
+struct RayHit
 {
 public:
-    __host__ __device__ IntersectInfo() {}
+    __device__ RayHit() {}
 
-    __host__ __device__ IntersectInfo(const IntersectInfo& o)
+    __device__ RayHit(float dist)
+        : distance(dist) {}
+
+    __device__ inline void copy(const RayHit& o)
     {
-        hit.position = o.hit.position;
-        hit.normal   = o.hit.normal;
-        hit.color    = o.hit.color;
-        hit.distance = o.hit.distance;
-        objectIndx   = o.objectIndx;
+        position     = o.position;
+        normal       = o.normal;
+        distance     = o.distance;
+        materialIndx = o.materialIndx;
     }
 
 public:
-    RayHit hit;
-    float Roughness = 0.25f;
-    uint32_t objectIndx = 0;
+	glm::vec3 position{ 0.0f, 0.0f, 0.0f };
+    glm::vec3 normal  { 0.0f, 0.0f, 0.0f };
+    float distance   = -1;
+
+    int materialIndx = -1;
+};
+
+struct TraceInfo
+{
+    glm::vec3 position{ 0.0f, 0.0f, 0.0f };
+    glm::vec3 normal  { 0.0f, 0.0f, 0.0f };
+    glm::vec3 color   { 0.0f, 0.0f, 0.0f };
+    float roughness = 0;
 };

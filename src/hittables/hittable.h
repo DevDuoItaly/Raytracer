@@ -1,9 +1,11 @@
-#pragma once 
+#pragma once
 
 #include "../structs.h"
+
+#include "glm/glm.hpp"
 
 class Hittable
 {
 public:
-    __device__ virtual bool intersect(const Ray& ray, IntersectInfo& info) const = 0;
+    __device__ virtual bool intersect(const Ray& ray, RayHit& hit) const;
 };

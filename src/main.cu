@@ -2,28 +2,93 @@
 #include <stdio.h>
 #include <string>
 #include <math.h>
-#include <vector>
-
-#include "structs.h"
 
 #include "camera.h"
-#include "ray.h"
+#include "structs.h"
 
-#include "hittables/hittable_list.h"
+#include "lights/directional_light.h"
+#include "lights/lights_list.h"
+#include "lights/light.h"
+
+#include "hittables/hittables_list.h"
 #include "hittables/hittable.h"
 #include "hittables/sphere.h"
 #include "hittables/cube.h"
+
+#include "material.h"
 
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/quaternion.hpp"
 #include "glm/gtx/quaternion.hpp"
 #include "glm/glm.hpp"
 
-inline void registerToWorld(std::vector<Hittable*>& world, uint32_t& worldSize, Hittable& obj, size_t objSize);
+#define MAX_DEPTH 2
 
 void writePPM(const char* path, pixel* img, int width, int height);
 
-__global__ void kernel(pixel* image, int width, int height, glm::vec3 camPos, glm::mat4 invPerspective, glm::mat4 invView, Hittable** world)
+__device__ inline void UVToDirection(float u, float v, const glm::mat4& invProj, const glm::mat4& invView, glm::vec3& direction)
+{
+    glm::vec4 target = invProj * glm::vec4(u, v, 1.0f, 1.0f); // Clip Space
+    direction = glm::vec3(invView * glm::vec4(glm::normalize(glm::vec3(target) / target.w), 0.0f)); // World space
+}
+
+__device__ glm::vec3 TraceRay(Ray ray, Hittable** world, Light** lights, Material* materials, float multiplier, int depth)
+{
+    RayHit hit;
+    if(!(*world)->intersect(ray, hit))
+        return glm::vec3{ 0.52f, 0.80f, 0.92f } * multiplier;
+
+    float intensity = 0.0f;
+    (*lights)->IsInLight(hit.position, hit.normal, intensity);
+
+    const Material& material = materials[hit.materialIndx];
+    glm::vec3 color = material.color * intensity * multiplier;
+
+    if(depth < MAX_DEPTH)
+    {
+        if(material.refraction <= 0)
+        {
+            // Reflection
+            ray.origin = hit.position + hit.normal * 0.0001f;
+            ray.direction = glm::reflect(ray.direction, hit.normal + material.roughness);
+        }
+        else
+        {
+            // Refraction
+            // ray.direction = glm::refraction(ray.direction, hit.normal, material.refraction);
+        }
+
+        color += TraceRay(ray, world, lights, materials, multiplier * 0.35f, depth + 1);
+    }
+
+    return color;
+}
+
+__device__ glm::vec3 AntiAliasing(float u, float v, float pixelOffX, float pixelOffY, const Camera& camera, Hittable** world, Light** lights, Material* materials)
+{
+    const glm::mat4& invProj = camera.GetInverseProjectionMatrix();
+    const glm::mat4& invView = camera.GetInverseViewMatrix();
+
+    glm::vec3 color{ 0.0f, 0.0f, 0.0f };
+    Ray ray{ camera.GetPosition() , glm::vec3{ 0.0f, 0.0f, 0.0f } };
+
+    UVToDirection(u - pixelOffX, v - pixelOffY, invProj, invView, ray.direction);
+    color += TraceRay(ray, world, lights, materials, 1, 0);
+
+    UVToDirection(u + pixelOffX, v - pixelOffY, invProj, invView, ray.direction);
+    color += TraceRay(ray, world, lights, materials, 1, 0);
+
+    UVToDirection(u - pixelOffX, v + pixelOffY, invProj, invView, ray.direction);
+    color += TraceRay(ray, world, lights, materials, 1, 0);
+
+    UVToDirection(u + pixelOffX, v + pixelOffY, invProj, invView, ray.direction);
+    color += TraceRay(ray, world, lights, materials, 1, 0);
+
+    color *= glm::vec3{ 0.25f, 0.25f, 0.25f };
+    return color;
+}
+
+__global__ void kernel(pixel* image, int width, int height, Camera camera, Hittable** world, Light** lights, Material* materials)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -35,53 +100,41 @@ __global__ void kernel(pixel* image, int width, int height, glm::vec3 camPos, gl
     float u = ((float)x / (float)width ) * 2.0f - 1.0f;
     float v = ((float)y / (float)height) * 2.0f - 1.0f;
 
-    glm::vec4 target = invPerspective * glm::vec4(u, v, 1.0f, 1.0f);
-    glm::vec3 rayDirection = glm::vec3(invView * glm::vec4(glm::normalize(glm::vec3(target) / target.w), 0.0f)); // World space
-
-    Ray ray(camPos, rayDirection);
-
-    glm::vec3 result(0.0f);
-    float multiplier = 1.0f;
-
-	int bounces = 2;
-	for (int i = 0; i < bounces; ++i)
-	{
-        IntersectInfo info;
-        if(!(*world)->intersect(ray, info))
-        {
-            glm::vec3 skyColor{ 0.52f, 0.80f, 0.92f };
-            result += skyColor * multiplier;
-            break;
-        }
-
-        glm::vec3 lightDir = glm::normalize(glm::vec3{ -0.75f, 0.45f, -0.5f });
-        float lightIntensity = max(glm::dot(info.hit.normal, -lightDir), 0.0f);
-        result += info.hit.color * lightIntensity * multiplier;
-
-        multiplier *= 0.45f;
-
-		ray.Origin = info.hit.position + info.hit.normal * 0.0001f;
-        ray.Direction = glm::reflect(ray.Direction, info.hit.normal + info.Roughness);
-		//ray.Direction = glm::reflect(ray.Direction,
-		//	payload.WorldNormal + material.Roughness * Walnut::Random::Vec3(-0.5f, 0.5f));
-        //
-		// ray.SetDirection(glm::normalize(payload.normal + glm::normalize(glm::vec3{ -1.0f, 1.0f, 0.0f })));
-    }
-
+    float pixelOffX = 0.5f / width;
+    float pixelOffY = 0.5f / height;
+    glm::vec3 result = AntiAliasing(u, v, pixelOffX, pixelOffY, camera, world, lights, materials);
+    
     result = glm::clamp(result, glm::vec3(0.0f), glm::vec3(1.0f));
 
     image[x + y * width].Set(result);
 }
 
-__global__ void createWorld(Hittable** d_list, Hittable** d_world)
+__global__ void initLights(Light** l_lights, Light** d_lights)
 {
-    if (threadIdx.x != 0 || blockIdx.x != 0)
+    if(threadIdx.x > 0 || threadIdx.y > 0)
         return;
 
-    *(d_list)     = new Sphere(glm::vec3{ 0.0f,  0.5f, 3.5f }, 0.5f, glm::vec3{ 1.0f, 0.0f, 1.0f }); //0);
-    *(d_list + 1) = new Sphere(glm::vec3{ 0.0f, -9.0f, 3.5f }, 9.0f, glm::vec3{ 0.2f, 0.3f, 0.9f }); //0);
-    *(d_list + 2) = new Cube(glm::vec3{ 2.0f,  2.0f, 2.0f }, glm::vec3{ 0.5f, 0.5f, 0.5f }, glm::vec3{ 0.8f, 0.6f, 0.2f });
-    *d_world      = new HittableList(d_list, 2);
+    *(l_lights) = new DirectionalLight({ -0.75f, 1.0f, 0.5f });
+    *(d_lights) = new LightsList(l_lights, 1);
+}
+
+__global__ void initWorld(Hittable** l_world, Hittable** d_world)
+{
+    if(threadIdx.x > 0 || threadIdx.y > 0)
+        return;
+
+    *(l_world)     = new Sphere({ 0.0f,  0.5f, 5.0f }, 0.5f, 0);
+    *(l_world + 1) = new Sphere({ 0.0f, -5.0f, 5.0f }, 5.0f, 1);
+    *(l_world + 2) = new Cube  ({ 2.0f,  2.0f, 2.0f }, { 0.5f, 0.5f, 0.5f }, 0);
+    *(d_world)     = new HittablesList(l_world, 3);
+}
+
+__global__ void cudaFreeList(void** list, void** device_list, int size)
+{
+    for(int i = 0; i < size; ++i)
+        free(list[i]);
+
+    free(device_list);
 }
 
 int main(int argc, char **argv) 
@@ -96,32 +149,60 @@ int main(int argc, char **argv)
 	pixel* d_image;
 	cudaMalloc(&d_image, totalImageBytes);
 
-
+	
     // Setup
     Camera camera(60.0f, width, height, 0.01f, 1000.0f);
 
+    // Init Lights
+    Light** l_lights;
+    cudaMalloc((void**)&l_lights, 1 * sizeof(Light*));
 
-    // Create World
-    Hittable** d_list;
-    cudaMalloc((void**)&d_list, 3 * sizeof(Hittable*));
+    Light** d_lights;
+    cudaMalloc((void**)&d_lights, sizeof(LightsList*));
+
+    initLights<<<1, 1>>>(l_lights, d_lights);
+
+    // Init World
+    Hittable** l_world;
+    cudaMalloc((void**)&l_world, 3 * sizeof(Hittable*));
 
     Hittable** d_world;
-    cudaMalloc((void**)&d_world, sizeof(Hittable*));
+    cudaMalloc((void**)&d_world, sizeof(HittablesList*));
 
-    createWorld<<<1, 1>>>(d_list, d_world);
-    cudaDeviceSynchronize();
+    initWorld<<<1, 1>>>(l_world, d_world);
 
+    // Init Materials
+    Material* d_materials;
+    cudaMalloc((void**)&d_materials, 2 * sizeof(Material));
+
+    {
+        Material materials[] =
+        {
+            Material{ glm::vec3{ 1.0f, 0.0f, 1.0f }, 0.0f, 0.0f },
+            Material{ glm::vec3{ 0.2f, 0.3f, 0.8f }, 0.0f , 0.0f }
+        };
+
+        cudaMemcpy(d_materials, materials, 2 * sizeof(Material), cudaMemcpyHostToDevice);
+    }
+    
 
     // Raytrace
 	dim3 BlockSize(16, 16, 1);
 	dim3 GridSize((width + 15) / 16, (height + 15) / 16, 1);
-    
-	kernel<<<GridSize, BlockSize>>>(d_image, width, height, camera.GetPosition(), camera.GetInverseProjectionMatrix(), camera.GetInverseViewMatrix(), d_world);
-	cudaMemcpy(h_image, d_image, totalImageBytes, cudaMemcpyDeviceToHost);
 
+	kernel<<<GridSize, BlockSize>>>(d_image, width, height, camera, d_world, d_lights, d_materials);
+	cudaMemcpy(h_image, d_image, totalImageBytes, cudaMemcpyDeviceToHost);
+	
 
     // Saving and closing
 	writePPM("output.ppm", h_image, width, height);
+
+    // Free
+    cudaFreeList<<<1, 1>>>((void**)l_lights, (void**)d_lights, 1);
+    cudaFreeList<<<1, 1>>>((void**)l_world,  (void**)d_world,  2);
+
+    cudaFree(d_materials);
+
 	cudaFree(d_image);
 	free(h_image);
 	return 0;
@@ -143,39 +224,3 @@ void writePPM(const char* path, pixel* img, int width, int height)
 	
 	fclose(file);
 }
-
-
-/*
-interfaccia oggetto
-{
-    bool intersect(Hit* h, float* d);
-}
-
-sfera : oggetto
-{
-    bool intersect(Hit* h, float* d)
-    {
-        return bla bla;
-    }
-}
-
-color
-{
-    hit, dist;
-    for(oggetto nel mondo)
-    {
-        Hit h;
-        float d
-        if(!oggetto.intersect(&h, &d))
-            return;
-        
-        if(d < dist)
-        {
-            hit = h;
-            dist = d;
-        }
-    }
-
-    return hit;
-}
-*/
