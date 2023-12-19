@@ -14,6 +14,7 @@
 #include "hittables/hittable.h"
 #include "hittables/sphere.h"
 #include "hittables/cube.h"
+#include "hittables/plane.h"
 
 #include "material.h"
 
@@ -124,8 +125,9 @@ __global__ void initWorld(Hittable** l_world, Hittable** d_world)
         return;
 
     *(l_world)     = new Sphere({ 0.0f,  0.5f, 5.0f }, 0.5f, 0);
-    *(l_world + 1) = new Sphere({ 0.0f, -5.0f, 5.0f }, 5.0f, 1);
-    *(l_world + 2) = new Cube  ({ 2.0f,  2.0f, 2.0f }, { 0.5f, 0.5f, 0.5f }, 0);
+    *(l_world + 1) = new Sphere({ 0.0f, -5.0f, 5.0f }, 0.0f, 1);
+    //*(l_world + 2) = new Cube  ({ 2.0f,  2.0f, 2.0f }, { 0.5f, 0.5f, 0.5f }, 0);
+    *(l_world + 2) = new Plane({ 0.0f, 1.0f, 0.0f }, 1.0f, 0);
     *(d_world)     = new HittablesList(l_world, 3);
 }
 
