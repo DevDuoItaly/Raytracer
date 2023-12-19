@@ -27,6 +27,17 @@ public:
         return hasHit;
     }
 
+    __device__ virtual bool hasIntersect(const Ray& ray) const
+    {
+        RayHit hit;
+        for(int i = 0; i < m_Length; ++i)
+        {
+            if(m_Hittables[i]->intersect(ray, hit))
+                return true;
+        }
+        return false;
+    }
+
 public:
     Hittable** m_Hittables = nullptr;
     int m_Length = -1;

@@ -40,7 +40,7 @@ __device__ glm::vec3 TraceRay(Ray ray, Hittable** world, Light** lights, Materia
         return glm::vec3{ 0.52f, 0.80f, 0.92f } * multiplier;
 
     float intensity = 0.0f;
-    (*lights)->IsInLight(hit.position, hit.normal, intensity);
+    (*lights)->GetLightIntensity(world, hit.position, hit.normal, intensity);
 
     const Material& material = materials[hit.materialIndx];
     glm::vec3 color = material.color * intensity * multiplier;
@@ -115,7 +115,7 @@ __global__ void initLights(Light** l_lights, Light** d_lights)
     if(threadIdx.x > 0 || threadIdx.y > 0)
         return;
 
-    *(l_lights) = new DirectionalLight({ -0.75f, 1.0f, 0.5f });
+    *(l_lights) = new DirectionalLight({ -0.35f, 1.0f, 0.15f });
     *(d_lights) = new LightsList(l_lights, 1);
 }
 
@@ -125,9 +125,9 @@ __global__ void initWorld(Hittable** l_world, Hittable** d_world)
         return;
 
     *(l_world)     = new Sphere({ 0.0f,  0.5f, 5.0f }, 0.5f, 0);
-    *(l_world + 1) = new Sphere({ 0.0f, -5.0f, 5.0f }, 0.0f, 1);
+    *(l_world + 1) = new Sphere({ 0.0f, -5.0f, 5.0f }, 5.0f, 1);
     //*(l_world + 2) = new Cube  ({ 2.0f,  2.0f, 2.0f }, { 0.5f, 0.5f, 0.5f }, 0);
-    *(l_world + 2) = new Plane({ 0.0f, 1.0f, 0.0f }, 1.0f, 0);
+    *(l_world + 2) = new Plane ({ 0.0f,  1.0f, 0.0f }, 1.0f, 0);
     *(d_world)     = new HittablesList(l_world, 3);
 }
 

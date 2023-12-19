@@ -12,10 +12,12 @@ public:
     __device__ virtual bool intersect(const Ray& ray, RayHit& hit) const
     {
         float denom = glm::dot(m_Normal, ray.direction);
-        if (abs(denom) > 1e-6) {
+        if (abs(denom) > 1e-6)
+        {
             glm::vec3 p0 = m_Normal * m_Distance;
             float t = glm::dot(p0 - ray.origin, m_Normal) / denom;
-            if (t >= 0) {
+            if (t >= 0)
+            {
                 hit.distance = t;
                 hit.position = ray.origin + ray.direction * t;
                 hit.normal = m_Normal;
