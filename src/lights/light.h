@@ -4,10 +4,14 @@
 
 #include "glm/glm.hpp"
 
+#ifndef PREFIX
+    #define PREFIX
+#endif
+
 class Light
 {
 public:
-    __device__ virtual bool IsInLight(Hittable** world, const glm::vec3& position) const;
-
-    __device__ virtual void GetLightIntensity(Hittable** world, const glm::vec3& position, const glm::vec3& normal, float& intensity) const;
+    PREFIX virtual bool IsInLight(Hittable** world, const glm::vec3& position) const = 0;
+    
+    PREFIX virtual void GetLightIntensity(Hittable** world, const glm::vec3& position, const glm::vec3& normal, float& intensity) const = 0;
 };

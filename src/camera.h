@@ -3,6 +3,10 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
+#ifndef PREFIX
+    #define PREFIX
+#endif
+
 class Camera
 {
 public:
@@ -19,27 +23,27 @@ public:
         m_invViewMatrix = glm::inverse(m_ViewMatrix);
     }
 
-    __device__ inline const glm::vec3& GetPosition() const
+    PREFIX inline const glm::vec3& GetPosition() const
     {
         return m_Position;
     }
 
-    __device__ inline const glm::mat4& GetProjectionMatrix() const
+    PREFIX inline const glm::mat4& GetProjectionMatrix() const
     {
         return m_ProjectionMatrix;
     }
 
-    __device__ inline const glm::mat4& GetInverseProjectionMatrix() const
+    PREFIX inline const glm::mat4& GetInverseProjectionMatrix() const
     {
         return m_invProjectionMatrix;
     }
 
-    __device__ inline const glm::mat4& GetViewMatrix() const
+    PREFIX inline const glm::mat4& GetViewMatrix() const
     {
         return m_ViewMatrix;
     }
 
-    __device__ inline const glm::mat4& GetInverseViewMatrix() const
+    PREFIX inline const glm::mat4& GetInverseViewMatrix() const
     {
         return m_invViewMatrix;
     }

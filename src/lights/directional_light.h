@@ -5,17 +5,21 @@
 class DirectionalLight : public Light
 {
 public:
-    __device__ DirectionalLight(const glm::vec3& direction)
+    PREFIX DirectionalLight(const glm::vec3& direction)
         : m_Direction(glm::normalize(-direction)) {}
     
-    __device__ virtual bool IsInLight(Hittable** world, const glm::vec3& position) const
+    PREFIX virtual bool IsInLight(Hittable** world, const glm::vec3& position) const
     {
-        return !(*world)->hasIntersect(Ray{ position, -m_Direction });
+        if(debug)
+            printf("Check in light: %f %f %f - %f %f %f\n", position.x, position.y, position.z, m_Direction.x, m_Direction.y, m_Direction.z);
+
+        return !(*world)->hasIntersect(Ray{ position, m_Direction });
     }
     
-    __device__ virtual void GetLightIntensity(Hittable** world, const glm::vec3& position, const glm::vec3& normal, float& intensity) const
+    PREFIX virtual void GetLightIntensity(Hittable** world, const glm::vec3& position, const glm::vec3& normal, float& intensity) const
     {
-        intensity = max(glm::dot(normal, m_Direction), 0.0f);
+        float d = glm::dot(normal, m_Direction);
+        intensity = d > 0 ? d : 0;
     }
 
 public:

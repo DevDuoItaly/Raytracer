@@ -5,10 +5,15 @@
 class LightsList : public Light
 {
 public:
-    __device__ LightsList(Light** lights, uint32_t length)
+    PREFIX LightsList(Light** lights, uint32_t length)
         : m_Lights(lights), m_Length(length) {}
+
+    PREFIX virtual bool IsInLight(Hittable** world, const glm::vec3& position) const
+    {
+        return false;
+    }
     
-    __device__ virtual void GetLightIntensity(Hittable** world, const glm::vec3& position, const glm::vec3& normal, float& intensity) const
+    PREFIX virtual void GetLightIntensity(Hittable** world, const glm::vec3& position, const glm::vec3& normal, float& intensity) const
     {
         intensity = 0;
         for(int i = 0; i < m_Length; ++i)

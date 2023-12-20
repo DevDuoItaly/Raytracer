@@ -6,10 +6,10 @@
 class Cube : public Hittable
 {
 public:
-    __device__ Cube(const glm::vec3& position, const glm::vec3& size, uint32_t materialIndx)
+    PREFIX Cube(const glm::vec3& position, const glm::vec3& size, uint32_t materialIndx)
         : m_Position(position), m_Size(size), m_MaterialIndx(materialIndx) {}
     
-    __device__ virtual bool intersect(const Ray& ray, RayHit& hit) const
+    PREFIX virtual bool intersect(const Ray& ray, RayHit& hit) const
     {
         glm::vec3 invDir = 1.0f / ray.direction;
         glm::vec3 t0 = (m_Position - ray.origin) * invDir;

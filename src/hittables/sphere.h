@@ -5,10 +5,10 @@
 class Sphere : public Hittable
 {
 public:
-    __device__ Sphere(const glm::vec3& position, const float radius, uint8_t materialIndx)
+    PREFIX Sphere(const glm::vec3& position, const float radius, uint8_t materialIndx)
         : m_Position(position), m_Radius(radius), m_MaterialIndx(materialIndx) {}
     
-    __device__ virtual bool intersect(const Ray& ray, RayHit& hit) const
+    PREFIX virtual bool intersect(const Ray& ray, RayHit& hit) const
     {
         glm::vec3 origin = ray.origin + m_Position;
 
@@ -27,8 +27,27 @@ public:
 
         hit.position = origin + ray.direction * hit.distance;
         hit.normal = glm::normalize(hit.position);
-        hit.position += m_Position;
+        hit.position -= m_Position;
         hit.materialIndx = m_MaterialIndx;
+        return true;
+    }
+
+    PREFIX virtual bool hasIntersect(const Ray& ray) const
+    {
+        glm::vec3 origin = ray.origin + m_Position;
+
+        float a = glm::dot(ray.direction, ray.direction);
+        float b = 2.0f * glm::dot(origin, ray.direction);
+        float c = glm::dot(origin, origin) - m_Radius * m_Radius;
+        
+        float discriminant = b * b - 4.0f * a * c;
+        
+        if (discriminant < 0.0f)
+            return false;
+        
+        if((-b - sqrt(discriminant)) / (2.0f * a) <= 0)
+            return false;
+
         return true;
     }
 

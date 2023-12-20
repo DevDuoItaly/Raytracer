@@ -2,11 +2,15 @@
 
 #include "glm/glm.hpp"
 
+#ifndef PREFIX
+    #define PREFIX
+#endif
+
 struct pixel
 {
     unsigned char x = 0, y = 0, z = 0;
 
-    __device__ void Set(const glm::vec3& c)
+    PREFIX void Set(const glm::vec3& c)
     {
         x = (unsigned char)(c.x * 255.0f);
         y = (unsigned char)(c.y * 255.0f);
@@ -23,12 +27,12 @@ struct Ray
 struct RayHit
 {
 public:
-    __device__ RayHit() {}
+    PREFIX RayHit() {}
 
-    __device__ RayHit(float dist)
+    PREFIX RayHit(float dist)
         : distance(dist) {}
 
-    __device__ inline void copy(const RayHit& o)
+    PREFIX inline void copy(const RayHit& o)
     {
         position     = o.position;
         normal       = o.normal;

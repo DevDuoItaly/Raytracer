@@ -4,10 +4,14 @@
 
 #include "glm/glm.hpp"
 
+#ifndef PREFIX
+    #define PREFIX
+#endif
+
 class Hittable
 {
 public:
-    __device__ virtual bool intersect(const Ray& ray, RayHit& hit) const;
+    PREFIX virtual bool intersect(const Ray& ray, RayHit& hit) const = 0;
 
-    __device__ virtual bool hasIntersect(const Ray& ray) const;
+    PREFIX virtual bool hasIntersect(const Ray& ray) const = 0;
 };

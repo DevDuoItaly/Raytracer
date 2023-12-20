@@ -1,93 +1,18 @@
-#include <iostream>
-#include <stdio.h>
-#include <string>
-#include <math.h>
-
-#include "camera.h"
-#include "structs.h"
+#define PREFIX __device__
+#include "renderer.h"
 
 #include "lights/directional_light.h"
 #include "lights/lights_list.h"
-#include "lights/light.h"
 
 #include "hittables/hittables_list.h"
-#include "hittables/hittable.h"
 #include "hittables/sphere.h"
 #include "hittables/cube.h"
 #include "hittables/plane.h"
 
-#include "material.h"
-
-#include "glm/gtc/matrix_transform.hpp"
-#include "glm/gtc/quaternion.hpp"
-#include "glm/gtx/quaternion.hpp"
-#include "glm/glm.hpp"
-
-#define MAX_DEPTH 2
+#include <iostream>
+#include <string>
 
 void writePPM(const char* path, pixel* img, int width, int height);
-
-__device__ inline void UVToDirection(float u, float v, const glm::mat4& invProj, const glm::mat4& invView, glm::vec3& direction)
-{
-    glm::vec4 target = invProj * glm::vec4(u, v, 1.0f, 1.0f); // Clip Space
-    direction = glm::vec3(invView * glm::vec4(glm::normalize(glm::vec3(target) / target.w), 0.0f)); // World space
-}
-
-__device__ glm::vec3 TraceRay(Ray ray, Hittable** world, Light** lights, Material* materials, float multiplier, int depth)
-{
-    RayHit hit;
-    if(!(*world)->intersect(ray, hit))
-        return glm::vec3{ 0.52f, 0.80f, 0.92f } * multiplier;
-
-    float intensity = 0.0f;
-    (*lights)->GetLightIntensity(world, hit.position, hit.normal, intensity);
-
-    const Material& material = materials[hit.materialIndx];
-    glm::vec3 color = material.color * intensity * multiplier;
-
-    if(depth < MAX_DEPTH)
-    {
-        if(material.refraction <= 0)
-        {
-            // Reflection
-            ray.origin = hit.position + hit.normal * 0.0001f;
-            ray.direction = glm::reflect(ray.direction, hit.normal + material.roughness);
-        }
-        else
-        {
-            // Refraction
-            // ray.direction = glm::refraction(ray.direction, hit.normal, material.refraction);
-        }
-
-        color += TraceRay(ray, world, lights, materials, multiplier * 0.35f, depth + 1);
-    }
-
-    return color;
-}
-
-__device__ glm::vec3 AntiAliasing(float u, float v, float pixelOffX, float pixelOffY, const Camera& camera, Hittable** world, Light** lights, Material* materials)
-{
-    const glm::mat4& invProj = camera.GetInverseProjectionMatrix();
-    const glm::mat4& invView = camera.GetInverseViewMatrix();
-
-    glm::vec3 color{ 0.0f, 0.0f, 0.0f };
-    Ray ray{ camera.GetPosition() , glm::vec3{ 0.0f, 0.0f, 0.0f } };
-
-    UVToDirection(u - pixelOffX, v - pixelOffY, invProj, invView, ray.direction);
-    color += TraceRay(ray, world, lights, materials, 1, 0);
-
-    UVToDirection(u + pixelOffX, v - pixelOffY, invProj, invView, ray.direction);
-    color += TraceRay(ray, world, lights, materials, 1, 0);
-
-    UVToDirection(u - pixelOffX, v + pixelOffY, invProj, invView, ray.direction);
-    color += TraceRay(ray, world, lights, materials, 1, 0);
-
-    UVToDirection(u + pixelOffX, v + pixelOffY, invProj, invView, ray.direction);
-    color += TraceRay(ray, world, lights, materials, 1, 0);
-
-    color *= glm::vec3{ 0.25f, 0.25f, 0.25f };
-    return color;
-}
 
 __global__ void kernel(pixel* image, int width, int height, Camera camera, Hittable** world, Light** lights, Material* materials)
 {
@@ -115,7 +40,7 @@ __global__ void initLights(Light** l_lights, Light** d_lights)
     if(threadIdx.x > 0 || threadIdx.y > 0)
         return;
 
-    *(l_lights) = new DirectionalLight({ -0.35f, 1.0f, 0.15f });
+    *(l_lights) = new DirectionalLight({ -0.35f, 1.0f, 0.0f });
     *(d_lights) = new LightsList(l_lights, 1);
 }
 
@@ -124,10 +49,10 @@ __global__ void initWorld(Hittable** l_world, Hittable** d_world)
     if(threadIdx.x > 0 || threadIdx.y > 0)
         return;
 
-    *(l_world)     = new Sphere({ 0.0f,  0.5f, 5.0f }, 0.5f, 0);
-    *(l_world + 1) = new Sphere({ 0.0f, -5.0f, 5.0f }, 5.0f, 1);
-    //*(l_world + 2) = new Cube  ({ 2.0f,  2.0f, 2.0f }, { 0.5f, 0.5f, 0.5f }, 0);
-    *(l_world + 2) = new Plane ({ 0.0f,  1.0f, 0.0f }, 1.0f, 0);
+    *(l_world)     = new Sphere({ 0.0f, -1.0f, 5.0f }, 0.5f, 0);
+    *(l_world + 1) = new Sphere({ 0.0f, -6.5f, 5.0f }, 5.0f, 1);
+    // *(l_world + 2) = new Cube  ({ 2.0f,  2.0f, 2.0f }, { 0.5f, 0.5f, 0.5f }, 0);
+    *(l_world + 2) = new Plane ({ 0.0f, -4.5f, 5.0f }, { 0.0f,  -1.0f, 0.0f }, 2);
     *(d_world)     = new HittablesList(l_world, 3);
 }
 
@@ -181,7 +106,7 @@ int main(int argc, char **argv)
         Material materials[] =
         {
             Material{ glm::vec3{ 1.0f, 0.0f, 1.0f }, 0.0f, 0.0f },
-            Material{ glm::vec3{ 0.2f, 0.3f, 0.8f }, 0.0f , 0.0f }
+            Material{ glm::vec3{ 0.2f, 0.3f, 0.8f }, 0.0f, 0.0f }
         };
 
         cudaMemcpy(d_materials, materials, 2 * sizeof(Material), cudaMemcpyHostToDevice);
