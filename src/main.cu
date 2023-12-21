@@ -179,7 +179,7 @@ int main(int argc, char **argv)
 	cudaMemcpy(h_image, d_image, totalImageBytes, cudaMemcpyDeviceToHost);
 	
     //blurring
-    //gaussianBlur(h_image, width, height, 1.0f, 5);
+    gaussianBlur(h_image, width, height, 10.0f, 11);
 
     // Saving and closing
 	writePPM("output.ppm", h_image, width, height);

@@ -89,6 +89,7 @@ PREFIX glm::vec3 AntiAliasing(float u, float v, float pixelOffX, float pixelOffY
 
     color *= glm::vec3{ 0.25f, 0.25f, 0.25f };
     
+    /*
     float error = 0.001f;
     if(std::abs(u - 0.5f) < error && std::abs(v - 0.5f) < error)
     {
@@ -99,6 +100,7 @@ PREFIX glm::vec3 AntiAliasing(float u, float v, float pixelOffX, float pixelOffY
 
         debug = false;
     }
+    */
 
     return color;
 }
