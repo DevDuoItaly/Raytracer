@@ -12,6 +12,9 @@
 #include <iostream>
 #include <string>
 
+#define WIDTH = 1920
+#define HEIGHT = 1080
+
 void writePPM(const char* path, pixel* img, int width, int height);
 
 __global__ void kernel(pixel* image, int width, int height, Camera camera, Hittable** world, Light** lights, Material* materials)
@@ -64,6 +67,61 @@ __global__ void cudaFreeList(void** list, void** device_list, int size)
     free(device_list);
 }
 
+void gaussianBlur(pixel* img, int width, int height, float sigma, int size) {
+    if (size % 2 == 0 || size < 3) {
+        std::cerr << "La dimensione del kernel deve essere dispari e maggiore di 1." << std::endl;
+        return;
+    }
+
+    float kernel[size][size];
+    float sum = 0.0;
+
+    //calcolo valori del kernel
+    for (int x = -size / 2; x <= size / 2; x++) {
+        for (int y = -size / 2; y <= size / 2; y++) {
+            float value = exp(-(x * x + y * y) / (2 * sigma * sigma));
+            kernel[x + size / 2][y + size / 2] = value;
+            sum += value;
+        }
+    }
+
+    //normalizzo il kernel
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            kernel[i][j] /= sum;
+        }
+    }
+
+    //applico il blur
+    pixel* tempImg = (pixel*)malloc(width * height * sizeof(pixel));
+
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            float sumX = 0.0, sumY = 0.0, sumZ = 0.0;
+
+            for (int k = -size / 2; k <= size / 2; k++) {
+                for (int l = -size / 2; l <= size / 2; l++) {
+                    int x = min(max(j + k, 0), width - 1);
+                    int y = min(max(i + l, 0), height - 1);
+
+                    sumX += img[y * width + x].x * kernel[k + size / 2][l + size / 2];
+                    sumY += img[y * width + x].y * kernel[k + size / 2][l + size / 2];
+                    sumZ += img[y * width + x].z * kernel[k + size / 2][l + size / 2];
+                }
+            }
+
+            // Clamping i valori tra 0 e 255
+            tempImg[i * width + j].x = (unsigned char)(max(0.0f, min(255.0f, sumX)));
+            tempImg[i * width + j].y = (unsigned char)(max(0.0f, min(255.0f, sumY)));
+            tempImg[i * width + j].z = (unsigned char)(max(0.0f, min(255.0f, sumZ)));
+        }
+    }
+
+    // Copiare l'immagine sfocata nell'array originale
+    memcpy(img, tempImg, width * height * sizeof(pixel));
+    free(tempImg);
+}
+
 int main(int argc, char **argv) 
 {
     // Screen Infos
@@ -105,7 +163,7 @@ int main(int argc, char **argv)
     {
         Material materials[] =
         {
-            Material{ glm::vec3{ 1.0f, 0.0f, 1.0f }, 0.0f, 0.0f },
+            Material{ glm::vec3{ 1.0f, 0.0f, 1.0f }, 0.0f, -0.5f },
             Material{ glm::vec3{ 0.2f, 0.3f, 0.8f }, 0.0f, 0.0f }
         };
 
@@ -120,6 +178,8 @@ int main(int argc, char **argv)
 	kernel<<<GridSize, BlockSize>>>(d_image, width, height, camera, d_world, d_lights, d_materials);
 	cudaMemcpy(h_image, d_image, totalImageBytes, cudaMemcpyDeviceToHost);
 	
+    //blurring
+    //gaussianBlur(h_image, width, height, 1.0f, 5);
 
     // Saving and closing
 	writePPM("output.ppm", h_image, width, height);
@@ -151,3 +211,4 @@ void writePPM(const char* path, pixel* img, int width, int height)
 	
 	fclose(file);
 }
+
