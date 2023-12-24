@@ -1,6 +1,7 @@
 #pragma once
 
 #include "hittable.h"
+
 #include "glm/glm.hpp"
 
 class Cube : public Hittable

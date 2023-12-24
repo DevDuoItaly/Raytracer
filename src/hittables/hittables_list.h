@@ -21,6 +21,7 @@ public:
                 continue;
 
             hit.copy(currHit);
+            hit.objectIndx = i;
             hasHit = true;
         }
 

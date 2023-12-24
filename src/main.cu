@@ -1,4 +1,4 @@
-#define PREFIX __device__
+#define GPU_RUNNER 1
 #include "renderer.h"
 
 #include "lights/directional_light.h"
@@ -24,6 +24,9 @@ __global__ void kernel(pixel* image, int width, int height, Camera camera, Hitta
 
     if (x >= width || y >= height)
         return;
+
+    curandState randState;
+    curand_init(34567, x + y * width, 0, &randState);
     
     // -1 / 1
     float u = ((float)x / (float)width ) * 2.0f - 1.0f;
@@ -31,7 +34,7 @@ __global__ void kernel(pixel* image, int width, int height, Camera camera, Hitta
 
     float pixelOffX = 0.5f / width;
     float pixelOffY = 0.5f / height;
-    glm::vec3 result = AntiAliasing(u, v, pixelOffX, pixelOffY, camera, world, lights, materials);
+    glm::vec3 result = AntiAliasing(u, v, pixelOffX, pixelOffY, camera, world, lights, materials &randState);
     
     result = glm::clamp(result, glm::vec3(0.0f), glm::vec3(1.0f));
 
@@ -163,8 +166,14 @@ int main(int argc, char **argv)
     {
         Material materials[] =
         {
+<<<<<<< Updated upstream
             Material{ glm::vec3{ 1.0f, 0.0f, 1.0f }, 0.0f, -0.5f },
             Material{ glm::vec3{ 0.2f, 0.3f, 0.8f }, 0.0f, 0.0f }
+=======
+            Material{ glm::vec3{ 1.0f,  0.0f,  1.0f },  0.0f, 0.15f,   0.85f },
+            Material{ glm::vec3{ 0.2f,  0.3f,  0.8f },  0.0f, 0.05f,   0.0f  },
+            Material{ glm::vec3{ 0.15f, 0.15f, 0.15f }, 0.0f, 0.001f,  0.0f  }
+>>>>>>> Stashed changes
         };
 
         cudaMemcpy(d_materials, materials, 2 * sizeof(Material), cudaMemcpyHostToDevice);

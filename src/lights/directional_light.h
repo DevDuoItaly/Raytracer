@@ -10,9 +10,6 @@ public:
     
     PREFIX virtual bool IsInLight(Hittable** world, const glm::vec3& position) const
     {
-        if(debug)
-            printf("Check in light: %f %f %f - %f %f %f\n", position.x, position.y, position.z, m_Direction.x, m_Direction.y, m_Direction.z);
-
         return !(*world)->hasIntersect(Ray{ position, m_Direction });
     }
     

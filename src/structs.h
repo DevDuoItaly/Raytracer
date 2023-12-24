@@ -1,10 +1,8 @@
 #pragma once
 
-#include "glm/glm.hpp"
+#include "core.h"
 
-#ifndef PREFIX
-    #define PREFIX
-#endif
+#include "glm/glm.hpp"
 
 struct pixel
 {
@@ -12,9 +10,9 @@ struct pixel
 
     PREFIX void Set(const glm::vec3& c)
     {
-        x = (unsigned char)(c.x * 255.0f);
-        y = (unsigned char)(c.y * 255.0f);
-        z = (unsigned char)(c.z * 255.0f);
+        x = (unsigned char)(sqrt(c.x) * 255.0f);
+        y = (unsigned char)(sqrt(c.y) * 255.0f);
+        z = (unsigned char)(sqrt(c.z) * 255.0f);
     }
 };
 
@@ -38,6 +36,7 @@ public:
         normal       = o.normal;
         distance     = o.distance;
         materialIndx = o.materialIndx;
+        objectIndx   = o.objectIndx;
     }
 
 public:
@@ -45,7 +44,7 @@ public:
     glm::vec3 normal  { 0.0f, 0.0f, 0.0f };
     float distance   = -1;
 
-    int materialIndx = -1;
+    int materialIndx = -1, objectIndx = -1;
 };
 
 struct TraceInfo

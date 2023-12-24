@@ -1,12 +1,9 @@
 #pragma once
 
-#include "../structs.h"
+#include "core.h"
+#include "structs.h"
 
 #include "glm/glm.hpp"
-
-#ifndef PREFIX
-    #define PREFIX
-#endif
 
 class Hittable
 {

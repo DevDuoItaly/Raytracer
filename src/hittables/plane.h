@@ -2,7 +2,7 @@
 
 #include "hittable.h"
 
-#include <glm/glm.hpp>
+#include "glm/glm.hpp"
 
 class Plane : public Hittable
 {
@@ -13,20 +13,10 @@ public:
     PREFIX virtual bool intersect(const Ray& ray, RayHit& hit) const
     {
         float denom = glm::dot(m_Normal, ray.direction);
-        if(debug)
-            printf("Denom: %f %d\n", denom, (std::abs(denom) <= 1e-6) ? 1 : 0);
-
         if (std::abs(denom) <= 1e-6)
             return false;
 
-        const glm::vec3 a = m_Center - ray.origin;
-        if(debug)
-            printf("%f %f %f - %f %f %f\n", a.x, a.y, a.z, m_Normal.x, m_Normal.y, m_Normal.z);
-        
         float t = glm::dot(ray.origin - m_Center, m_Normal) / denom;
-        if(debug)
-            printf("T: %f\n", t);
-
         if (t < 0)
             return false;
             

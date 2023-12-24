@@ -1,12 +1,9 @@
 #pragma once
 
-#include "../hittables/hittable.h"
+#include "core.h"
+#include "hittables/hittable.h"
 
 #include "glm/glm.hpp"
-
-#ifndef PREFIX
-    #define PREFIX
-#endif
 
 class Light
 {

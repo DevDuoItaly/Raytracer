@@ -15,7 +15,7 @@ public:
     
     PREFIX virtual void GetLightIntensity(Hittable** world, const glm::vec3& position, const glm::vec3& normal, float& intensity) const
     {
-        intensity = 0;
+        intensity = 0.085f;
         for(int i = 0; i < m_Length; ++i)
         {
             Light* light = m_Lights[i];
@@ -23,7 +23,7 @@ public:
                 continue;
 
             float intens = 0.0f;
-            m_Lights[i]->GetLightIntensity(world, position, normal, intens);
+            light->GetLightIntensity(world, position, normal, intens);
 
             if(intens > intensity)
                 intensity = intens;

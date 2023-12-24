@@ -5,5 +5,5 @@
 struct Material
 {
     glm::vec3 color;
-    float roughness, refraction;
+    float roughness, reflection, refraction;
 };
