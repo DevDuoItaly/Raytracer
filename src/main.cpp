@@ -85,7 +85,7 @@ void gaussianBlur(pixel* img, int width, int height, float sigma, int size) {
 
 int main()
 {
-    uint32_t width = 720, height = 405;
+    uint32_t width = 1920, height = 1080;
 
 	// Setup framebuffer
     pixel* image = new pixel[width * height];
@@ -138,14 +138,14 @@ int main()
 
     // -- Init Materials
     Material* materials = new Material[7];
-	materials[0] = Material{ glm::vec3{ 0.8f, 0.8f, 0.0f }, 0.0f,  0.0f,  0.0f  };
-	materials[1] = Material{ glm::vec3{ 0.0f, 0.0f, 0.0f }, 0.05f, 0.0f,  1.85f };
-	materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.2f,  0.75f, 0.0f  };
-	materials[3] = Material{ glm::vec3{ 0.8f, 0.2f, 0.1f }, 0.08f, 0.02f, 0.0f  };
+	materials[0] = Material{ glm::vec3{ 0.8f, 0.8f, 0.0f }, 0.0f,  0.0f,  0.0f,  false, 0.0f };
+	materials[1] = Material{ glm::vec3{ 0.0f, 0.0f, 0.0f }, 0.05f, 0.0f,  1.85f, false, 0.0f };
+	materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.2f,  0.75f, 0.0f,  false, 0.0f };
+	materials[3] = Material{ glm::vec3{ 0.8f, 0.2f, 0.1f }, 0.08f, 0.02f, 0.0f,  false, 0.0f };
 
-	materials[4] = Material{ glm::vec3{ 0.1f, 0.7f, 0.2f }, 0.08f, 0.02f, 0.0f  };
-	materials[5] = Material{ glm::vec3{ 0.1f, 0.2f, 0.7f }, 0.08f, 0.02f, 0.0f  };
-	materials[6] = Material{ glm::vec3{ 0.1f, 0.2f, 0.7f }, 0.1f,  0.05f, 0.0f  };
+	materials[4] = Material{ glm::vec3{ 0.1f, 0.7f, 0.2f }, 0.08f, 0.02f, 0.0f,  false, 0.0f };
+	materials[5] = Material{ glm::vec3{ 0.1f, 0.2f, 0.7f }, 0.08f, 0.02f, 0.0f,  false, 0.0f };
+	materials[6] = Material{ glm::vec3{ 0.1f, 0.2f, 0.7f }, 0.1f,  0.05f, 0.0f,  false, 0.0f };
 	// materials[1] = Material{ glm::vec3{ 0.7f, 0.3f, 0.3f }, 0.9f,  0.08f, 0.0f  };
 	// materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.3f,  0.25f, 0.0f  };
 	// materials[3] = Material{ glm::vec3{ 0.0f, 0.0f, 0.0f }, 0.05f, 0.0f,  1.85f };
