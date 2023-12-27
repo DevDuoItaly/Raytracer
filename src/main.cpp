@@ -28,7 +28,7 @@ void writePPM(const char* path, pixel* img, int width, int height);
 std::vector<uint32_t> imageHorizontalIter;
 std::vector<uint32_t> imageVerticalIter;
 
-void gaussianBlur(pixel* img, int width, int height, float sigma, int size) {
+void gaussianBlur(pixel* img, pixel* glowMap, int width, int height, float sigma, int size) {
     if (size % 2 == 0 || size < 3) {
         std::cerr << "La dimensione del kernel deve essere dispari e maggiore di 1." << std::endl;
         return;
@@ -53,34 +53,85 @@ void gaussianBlur(pixel* img, int width, int height, float sigma, int size) {
         }
     }
 
-    //applico il blur
+    // applico il blur solo ai pixel con glow
     pixel* tempImg = (pixel*)malloc(width * height * sizeof(pixel));
+    memcpy(tempImg, img, width * height * sizeof(pixel));  // Copia l'immagine originale per preservare i pixel senza glow
 
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
-            float sumX = 0.0, sumY = 0.0, sumZ = 0.0;
+            if (glowMap[i * width + j].x > 0 || glowMap[i * width + j].y > 0 || glowMap[i * width + j].z > 0) {
+                float sumX = 0.0, sumY = 0.0, sumZ = 0.0;
 
-            for (int k = -size / 2; k <= size / 2; k++) {
-                for (int l = -size / 2; l <= size / 2; l++) {
-                    int x = std::min(std::max(j + k, 0), width - 1);
-                    int y = std::min(std::max(i + l, 0), height - 1);
+                for (int k = -size / 2; k <= size / 2; k++) {
+                    for (int l = -size / 2; l <= size / 2; l++) {
+                        int x = glm::min(glm::max(j + k, 0), width - 1);
+                        int y = glm::min(glm::max(i + l, 0), height - 1);
 
-                    sumX += img[y * width + x].x * kernel[k + size / 2][l + size / 2];
-                    sumY += img[y * width + x].y * kernel[k + size / 2][l + size / 2];
-                    sumZ += img[y * width + x].z * kernel[k + size / 2][l + size / 2];
+                        sumX += img[y * width + x].x * kernel[k + size / 2][l + size / 2];
+                        sumY += img[y * width + x].y * kernel[k + size / 2][l + size / 2];
+                        sumZ += img[y * width + x].z * kernel[k + size / 2][l + size / 2];
+                    }
                 }
-            }
 
-            // Clamping i valori tra 0 e 255
-            tempImg[i * width + j].x = (unsigned char)(std::max(0.0f, std::min(255.0f, sumX)));
-            tempImg[i * width + j].y = (unsigned char)(std::max(0.0f, std::min(255.0f, sumY)));
-            tempImg[i * width + j].z = (unsigned char)(std::max(0.0f, std::min(255.0f, sumZ)));
+                // Clamping i valori tra 0 e 255
+                tempImg[i * width + j].x = (unsigned char)(glm::max(0.0f, glm::min(255.0f, sumX)));
+                tempImg[i * width + j].y = (unsigned char)(glm::max(0.0f, glm::min(255.0f, sumY)));
+                tempImg[i * width + j].z = (unsigned char)(glm::max(0.0f, glm::min(255.0f, sumZ)));
+            }
         }
     }
 
-    // Copiare l'immagine sfocata nell'array originale
+    // Copiare i pixel sfocati nell'immagine originale
     memcpy(img, tempImg, width * height * sizeof(pixel));
     free(tempImg);
+}
+
+pixel* createGlowMap(pixel* renderedImage, Material* materials, int width, int height) {
+    pixel* glowMap = (pixel*)malloc(width * height * sizeof(pixel));
+
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            int index = i * width + j;
+            Material mat = materials[index];
+
+            if (mat.hasGlow) {
+                // Assegna un valore di intensità basato su glowStrength e il colore del pixel
+                glowMap[index].x = (unsigned char)(glm::min(255.0f, renderedImage[index].x * mat.glowStrength));
+                glowMap[index].y = (unsigned char)(glm::min(255.0f, renderedImage[index].y * mat.glowStrength));
+                glowMap[index].z = (unsigned char)(glm::min(255.0f, renderedImage[index].z * mat.glowStrength));
+            } else {
+                glowMap[index].x = 0;
+                glowMap[index].y = 0;
+                glowMap[index].z = 0;
+            }
+        }
+    }
+
+    return glowMap;
+}
+
+void applyGlow(pixel* image, pixel* glowMap, int width, int height) {
+    // Applica il blur per creare l'immagine sfocata
+    pixel* blurredImage = (pixel*)malloc(width * height * sizeof(pixel));
+    memcpy(blurredImage, image, width * height * sizeof(pixel));
+    gaussianBlur(blurredImage, glowMap, width, height, 10.0f, 11);
+
+    // Mescola l'immagine sfocata con l'originale
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            int index = i * width + j;
+
+            // Calcola il fattore di glow in base alla glowMap
+            float glowFactor = glowMap[index].x / 255.0f;
+
+            // Mescola i pixel 
+            image[index].x = (unsigned char)(glm::min(255, (int)image[index].x + (int)(blurredImage[index].x * glowFactor)));
+            image[index].y = (unsigned char)(glm::min(255, (int)image[index].y + (int)(blurredImage[index].y * glowFactor)));
+            image[index].z = (unsigned char)(glm::min(255, (int)image[index].z + (int)(blurredImage[index].z * glowFactor)));
+        }
+    }
+
+    free(blurredImage);
 }
 
 int main()
@@ -140,8 +191,8 @@ int main()
     Material* materials = new Material[7];
 	materials[0] = Material{ glm::vec3{ 0.8f, 0.8f, 0.0f }, 0.0f,  0.0f,  0.0f,  false, 0.0f };
 	materials[1] = Material{ glm::vec3{ 0.0f, 0.0f, 0.0f }, 0.05f, 0.0f,  1.85f, false, 0.0f };
-	materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.2f,  0.75f, 0.0f,  false, 0.0f };
-	materials[3] = Material{ glm::vec3{ 0.8f, 0.2f, 0.1f }, 0.08f, 0.02f, 0.0f,  false, 0.0f };
+	materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.2f,  0.75f, 0.0f,  true, 100.0f };
+	materials[3] = Material{ glm::vec3{ 0.8f, 0.2f, 0.1f }, 0.08f, 0.02f, 0.0f,  true, 100.0f };
 
 	materials[4] = Material{ glm::vec3{ 0.1f, 0.7f, 0.2f }, 0.08f, 0.02f, 0.0f,  false, 0.0f };
 	materials[5] = Material{ glm::vec3{ 0.1f, 0.2f, 0.7f }, 0.08f, 0.02f, 0.0f,  false, 0.0f };
@@ -246,10 +297,13 @@ int main()
 
 	writePPM("output.ppm", image, width, height);
 
-	//blurring
-    gaussianBlur(image, width, height, 10.0f, 11);
+	// glowMap gen
+	pixel* glowMap = createGlowMap(image, materials, width, height); 
 
-    writePPM("output_blurred.ppm", image, width, height);
+	// applico il glow
+    applyGlow(image, glowMap, width, height);
+
+    writePPM("output_with_glow.ppm", image, width, height);
 
     return 0;
 }
