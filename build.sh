@@ -1,0 +1,1 @@
+nvcc -O3 ./src/main.cu -lcurand -I./src/ -I./src/vendor/ -o Raytracer.ds

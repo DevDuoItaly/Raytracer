@@ -24,6 +24,9 @@ public:
         float t1 = (-b - sqrtd) / 2.0f;
         float t2 = (-b + sqrtd) / 2.0f;
 
+        if(debug)
+            printf("%f %f\n", t1, t2);
+
         if(t1 < 0 && t2 < 0)
             return false;
         

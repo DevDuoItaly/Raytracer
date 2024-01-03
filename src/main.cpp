@@ -1,4 +1,3 @@
-#include "cudarand.h"
 #include "renderer.h"
 
 #include "lights/directional_light.h"
@@ -18,8 +17,8 @@
 #include <algorithm>
 #include <execution>
 
-#define WIDTH = 1920
-#define HEIGHT = 1080
+#define WIDTH 1920
+#define HEIGHT 1080
 
 #define SAMPLES 30
 
@@ -161,7 +160,7 @@ int main()
     Light* lights = new LightsList(l_light, light_count);
 
     // -- Init World
-	curandState* rnd = new curandState(-1);
+	// curandState* rnd = new curandState(-1);
 
 	int spawnW = 7;
 
@@ -171,7 +170,7 @@ int main()
 	int i = 0;
 	for(; i < world_count - 4; ++i)
 	{
-		l_world[i + 1] = new Sphere({ (((int)i % spawnW) - 3) * 1.5f, 0.3f, ((int)(i / spawnW) - 3) * 1.5f }, 0.3f, (int)(RANDOM_UNIT(rnd) * 3) + 4);
+		l_world[i + 1] = new Sphere({ (((int)i % spawnW) - 3) * 1.5f, 0.3f, ((int)(i / spawnW) - 3) * 1.5f }, 0.3f, (int)(0 /*RANDOM_UNIT(rnd)*/ * 3) + 4);
 	}
 	++i;
 
@@ -189,10 +188,10 @@ int main()
 
     // -- Init Materials
     Material* materials = new Material[7];
-	materials[0] = Material{ glm::vec3{ 0.8f, 0.8f, 0.0f }, 0.0f,  0.0f,  0.0f,  false, 0.0f };
-	materials[1] = Material{ glm::vec3{ 0.0f, 0.0f, 0.0f }, 0.05f, 0.0f,  1.85f, false, 0.0f };
-	materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.2f,  0.75f, 0.0f,  true, 100.0f };
-	materials[3] = Material{ glm::vec3{ 0.8f, 0.2f, 0.1f }, 0.08f, 0.02f, 0.0f,  true, 100.0f };
+	materials[0] = Material{ glm::vec3{ 0.8f, 0.8f, 0.0f }, 0.0f,  0.0f,  0.0f,  false, 0.0f   };
+	materials[1] = Material{ glm::vec3{ 0.0f, 0.0f, 0.0f }, 0.05f, 0.0f,  1.85f, false, 0.0f   };
+	materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.2f,  0.75f, 0.0f,  true,  100.0f };
+	materials[3] = Material{ glm::vec3{ 0.8f, 0.2f, 0.1f }, 0.08f, 0.02f, 0.0f,  true,  100.0f };
 
 	materials[4] = Material{ glm::vec3{ 0.1f, 0.7f, 0.2f }, 0.08f, 0.02f, 0.0f,  false, 0.0f };
 	materials[5] = Material{ glm::vec3{ 0.1f, 0.2f, 0.7f }, 0.08f, 0.02f, 0.0f,  false, 0.0f };
@@ -223,14 +222,14 @@ int main()
 				float u = ((float)x / (float)width ) * 2.0f - 1.0f;
 				float v = ((float)y / (float)height) * 2.0f - 1.0f;
 
-				curandState randState(x + y * width);
+				// curandState randState(x + y * width);
 
 				float pixelOffX = 0.5f / width;
 				float pixelOffY = 0.5f / height;
 
 				glm::vec3 result{ 0.0f, 0.0f, 0.0f };
 				for(int i = 0; i < SAMPLES; ++i)
-					result += glm::clamp(AntiAliasing(u, v, pixelOffX, pixelOffY, camera, &world, &lights, materials, &randState), glm::vec3(0.0f), glm::vec3(1.0f));
+					result += glm::clamp(AntiAliasing(u, v, pixelOffX, pixelOffY, camera, &world, &lights, materials /*, &randState*/), glm::vec3(0.0f), glm::vec3(1.0f));
 				
 				image[x + y * width].Set(result / glm::vec3(SAMPLES));
 			});

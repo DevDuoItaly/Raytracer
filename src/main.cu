@@ -12,8 +12,10 @@
 #include <iostream>
 #include <string>
 
-#define WIDTH = 1920
-#define HEIGHT = 1080
+#define WIDTH 720
+#define HEIGHT 405
+
+#define SAMPLES 1
 
 void writePPM(const char* path, pixel* img, int width, int height);
 
@@ -24,21 +26,22 @@ __global__ void kernel(pixel* image, int width, int height, Camera camera, Hitta
 
     if (x >= width || y >= height)
         return;
-
-    curandState randState;
-    curand_init(34567, x + y * width, 0, &randState);
     
+    // curandState_t randState;
+    // curand_init(x + y * width, 0, 0, &randState);
+
     // -1 / 1
     float u = ((float)x / (float)width ) * 2.0f - 1.0f;
     float v = ((float)y / (float)height) * 2.0f - 1.0f;
 
     float pixelOffX = 0.5f / width;
     float pixelOffY = 0.5f / height;
-    glm::vec3 result = AntiAliasing(u, v, pixelOffX, pixelOffY, camera, world, lights, materials &randState);
-    
-    result = glm::clamp(result, glm::vec3(0.0f), glm::vec3(1.0f));
 
-    image[x + y * width].Set(result);
+    glm::vec3 result{ 0.0f, 0.0f, 0.0f };
+    for(int i = 0; i < SAMPLES; ++i)
+        result += glm::clamp(AntiAliasing(u, v, pixelOffX, pixelOffY, camera, world, lights, materials /*, &randState */), glm::vec3(0.0f), glm::vec3(1.0f));
+    
+    image[x + y * width].Set(result / glm::vec3(SAMPLES));
 }
 
 __global__ void initLights(Light** l_lights, Light** d_lights)
@@ -46,7 +49,7 @@ __global__ void initLights(Light** l_lights, Light** d_lights)
     if(threadIdx.x > 0 || threadIdx.y > 0)
         return;
 
-    *(l_lights) = new DirectionalLight({ -0.35f, 1.0f, 0.0f });
+    *(l_lights) = new DirectionalLight({ -0.25f, -0.75f, 0.45f  });
     *(d_lights) = new LightsList(l_lights, 1);
 }
 
@@ -54,12 +57,14 @@ __global__ void initWorld(Hittable** l_world, Hittable** d_world)
 {
     if(threadIdx.x > 0 || threadIdx.y > 0)
         return;
-
-    *(l_world)     = new Sphere({ 0.0f, -1.0f, 5.0f }, 0.5f, 0);
-    *(l_world + 1) = new Sphere({ 0.0f, -6.5f, 5.0f }, 5.0f, 1);
+    
+    *(l_world)     = new Sphere({  0.0f, -1000.0f, -4.0f }, 1000.0f, 0);
+    *(l_world + 1) = new Sphere({  0.0f,  1.0f,    -4.0f }, 1.0f,    1);
+    *(l_world + 2) = new Sphere({ -3.0f,  1.0f,    -4.0f }, 1.0f,    2);
+    *(l_world + 3) = new Sphere({  3.0f,  1.0f,    -4.0f }, 1.0f,    3);
     // *(l_world + 2) = new Cube  ({ 2.0f,  2.0f, 2.0f }, { 0.5f, 0.5f, 0.5f }, 0);
-    *(l_world + 2) = new Plane ({ 0.0f, -4.5f, 5.0f }, { 0.0f,  -1.0f, 0.0f }, 2);
-    *(d_world)     = new HittablesList(l_world, 3);
+    // *(l_world + 2) = new Plane ({ 0.0f, -4.5f, 5.0f }, { 0.0f,  -1.0f, 0.0f }, 2);
+    *(d_world)     = new HittablesList(l_world, 4);
 }
 
 __global__ void cudaFreeList(void** list, void** device_list, int size)
@@ -127,11 +132,8 @@ void gaussianBlur(pixel* img, int width, int height, float sigma, int size) {
 
 int main(int argc, char **argv) 
 {
-    // Screen Infos
-	int width = 1920, height = 1080;
-
     // Allocate Texture Memory
-	int totalImageBytes = width * height * sizeof(pixel);
+	int totalImageBytes = WIDTH * HEIGHT * sizeof(pixel);
 	pixel* h_image = (pixel*) malloc(totalImageBytes);
     
 	pixel* d_image;
@@ -139,7 +141,7 @@ int main(int argc, char **argv)
 
 	
     // Setup
-    Camera camera(60.0f, width, height, 0.01f, 1000.0f);
+    Camera camera(60.0f, WIDTH, HEIGHT, 0.01f, 1000.0f);
 
     // Init Lights
     Light** l_lights;
@@ -152,7 +154,7 @@ int main(int argc, char **argv)
 
     // Init World
     Hittable** l_world;
-    cudaMalloc((void**)&l_world, 3 * sizeof(Hittable*));
+    cudaMalloc((void**)&l_world, 4 * sizeof(Hittable*));
 
     Hittable** d_world;
     cudaMalloc((void**)&d_world, sizeof(HittablesList*));
@@ -161,37 +163,33 @@ int main(int argc, char **argv)
 
     // Init Materials
     Material* d_materials;
-    cudaMalloc((void**)&d_materials, 2 * sizeof(Material));
+    cudaMalloc((void**)&d_materials, 4 * sizeof(Material));
 
     {
-        Material materials[] =
-        {
-<<<<<<< Updated upstream
-            Material{ glm::vec3{ 1.0f, 0.0f, 1.0f }, 0.0f, -0.5f },
-            Material{ glm::vec3{ 0.2f, 0.3f, 0.8f }, 0.0f, 0.0f }
-=======
-            Material{ glm::vec3{ 1.0f,  0.0f,  1.0f },  0.0f, 0.15f,   0.85f },
-            Material{ glm::vec3{ 0.2f,  0.3f,  0.8f },  0.0f, 0.05f,   0.0f  },
-            Material{ glm::vec3{ 0.15f, 0.15f, 0.15f }, 0.0f, 0.001f,  0.0f  }
->>>>>>> Stashed changes
-        };
+        Material* materials = new Material[4];
+        materials[0] = Material{ glm::vec3{ 0.8f, 0.8f, 0.0f }, 0.0f,  0.0f,  0.0f  };
+        materials[1] = Material{ glm::vec3{ 0.8f, 0.2f, 0.1f }, 0.08f, 0.02f, 0.0f  };
+        materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.2f,  0.75f, 0.0f  };
+        materials[3] = Material{ glm::vec3{ 0.0f, 0.0f, 0.0f }, 0.05f, 0.0f,  1.85f };
 
-        cudaMemcpy(d_materials, materials, 2 * sizeof(Material), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_materials, materials, 4 * sizeof(Material), cudaMemcpyHostToDevice);
     }
     
 
     // Raytrace
 	dim3 BlockSize(16, 16, 1);
-	dim3 GridSize((width + 15) / 16, (height + 15) / 16, 1);
+	dim3 GridSize((WIDTH + 15) / 16, (HEIGHT + 15) / 16, 1);
 
-	kernel<<<GridSize, BlockSize>>>(d_image, width, height, camera, d_world, d_lights, d_materials);
+    printf("%u %u %u - %u %u %u\n", BlockSize.x, BlockSize.y, BlockSize.z, GridSize.x, GridSize.y, GridSize.z);
+
+	kernel<<<GridSize, BlockSize>>>(d_image, WIDTH, HEIGHT, camera, d_world, d_lights, d_materials);
 	cudaMemcpy(h_image, d_image, totalImageBytes, cudaMemcpyDeviceToHost);
 	
     //blurring
-    gaussianBlur(h_image, width, height, 10.0f, 11);
-
+    // gaussianBlur(h_image, WIDTH, HEIGHT, 10.0f, 11);
+    
     // Saving and closing
-	writePPM("output.ppm", h_image, width, height);
+	writePPM("output.ppm", h_image, WIDTH, HEIGHT);
 
     // Free
     cudaFreeList<<<1, 1>>>((void**)l_lights, (void**)d_lights, 1);
