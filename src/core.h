@@ -3,12 +3,16 @@
 #include "glm/glm.hpp"
 
 #ifdef GPU_RUNNER
-    #define PREFIX __device__
+    #define PREFIX_DEVICE __device__
+    #define PREFIX_HOST __host__
+    #define PREFIX __host__ __device__
 
     // #include <curand_kernel.h>
 
     // #define RANDOM_UNIT(randState) curand_uniform(randState)
 #else
+    #define PREFIX_DEVICE
+    #define PREFIX_HOST
     #define PREFIX
 
     // #include "cudarand.h"
@@ -30,7 +34,7 @@ PREFIX glm::vec3 RANDOM_UNIT_EMISPHERE(curandState* randState, const glm::vec3& 
 }
 */
 
-PREFIX bool refract(const glm::vec3& v, const glm::vec3& n, float ir, glm::vec3& refracted)
+PREFIX_DEVICE bool refract(const glm::vec3& v, const glm::vec3& n, float ir, glm::vec3& refracted)
 {
     glm::vec3 uv = glm::normalize(v);
     float dt = glm::dot(uv, n);

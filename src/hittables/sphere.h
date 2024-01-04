@@ -2,13 +2,15 @@
 
 #include "hittable.h"
 
+#include <cstdio>
+
 class Sphere : public Hittable
 {
 public:
-    PREFIX Sphere(const glm::vec3& position, const float radius, uint8_t materialIndx)
+    PREFIX_DEVICE Sphere(const glm::vec3& position, const float radius, uint8_t materialIndx)
         : m_Position(position), m_Radius(radius), m_MaterialIndx(materialIndx) {}
     
-    PREFIX virtual bool intersect(const Ray& ray, RayHit& hit) const
+    PREFIX_DEVICE virtual bool intersect(const Ray& ray, RayHit& hit) const
     {   
         glm::vec3 origin = ray.origin - m_Position;
 
@@ -48,7 +50,7 @@ public:
         return true;
     }
 
-    PREFIX virtual bool hasIntersect(const Ray& ray) const
+    PREFIX_DEVICE virtual bool hasIntersect(const Ray& ray) const
     {
         glm::vec3 origin = ray.origin - m_Position;
 

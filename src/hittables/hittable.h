@@ -8,7 +8,7 @@
 class Hittable
 {
 public:
-    PREFIX virtual bool intersect(const Ray& ray, RayHit& hit) const = 0;
+    PREFIX_DEVICE virtual bool intersect(const Ray& ray, RayHit& hit) const = 0;
 
-    PREFIX virtual bool hasIntersect(const Ray& ray) const = 0;
+    PREFIX_DEVICE virtual bool hasIntersect(const Ray& ray) const = 0;
 };

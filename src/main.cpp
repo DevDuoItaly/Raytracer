@@ -20,7 +20,7 @@
 #define WIDTH 1920
 #define HEIGHT 1080
 
-#define SAMPLES 30
+#define SAMPLES 5
 
 void writePPM(const char* path, pixel* img, int width, int height);
 
@@ -135,7 +135,7 @@ void applyGlow(pixel* image, pixel* glowMap, int width, int height) {
 
 int main()
 {
-    uint32_t width = 1920, height = 1080;
+    uint32_t width = 720, height = 405;
 
 	// Setup framebuffer
     pixel* image = new pixel[width * height];
@@ -188,10 +188,10 @@ int main()
 
     // -- Init Materials
     Material* materials = new Material[7];
-	materials[0] = Material{ glm::vec3{ 0.8f, 0.8f, 0.0f }, 0.0f,  0.0f,  0.0f,  false, 0.0f   };
-	materials[1] = Material{ glm::vec3{ 0.0f, 0.0f, 0.0f }, 0.05f, 0.0f,  1.85f, false, 0.0f   };
-	materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.2f,  0.75f, 0.0f,  true,  100.0f };
-	materials[3] = Material{ glm::vec3{ 0.8f, 0.2f, 0.1f }, 0.08f, 0.02f, 0.0f,  true,  100.0f };
+	materials[0] = Material{ glm::vec3{ 0.8f, 0.8f, 0.0f }, 0.0f,  0.0f,   0.0f,  false, 0.0f   };
+	materials[1] = Material{ glm::vec3{ 0.0f, 0.0f, 0.0f }, 0.05f, 0.0f,   1.85f, false, 0.0f   };
+	materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.2f,  0.75f,  0.0f,  true,  100.0f };
+	materials[3] = Material{ glm::vec3{ 0.8f, 0.2f, 0.1f }, 0.05f, 0.005f, 0.0f,  true,  100.0f };
 
 	materials[4] = Material{ glm::vec3{ 0.1f, 0.7f, 0.2f }, 0.08f, 0.02f, 0.0f,  false, 0.0f };
 	materials[5] = Material{ glm::vec3{ 0.1f, 0.2f, 0.7f }, 0.08f, 0.02f, 0.0f,  false, 0.0f };
@@ -229,7 +229,7 @@ int main()
 
 				glm::vec3 result{ 0.0f, 0.0f, 0.0f };
 				for(int i = 0; i < SAMPLES; ++i)
-					result += glm::clamp(AntiAliasing(u, v, pixelOffX, pixelOffY, camera, &world, &lights, materials /*, &randState*/), glm::vec3(0.0f), glm::vec3(1.0f));
+					result += glm::clamp(AntiAliasing(u, v, pixelOffX, pixelOffY, &camera, &world, &lights, materials /*, &randState*/), glm::vec3(0.0f), glm::vec3(1.0f));
 				
 				image[x + y * width].Set(result / glm::vec3(SAMPLES));
 			});
@@ -297,12 +297,12 @@ int main()
 	writePPM("output.ppm", image, width, height);
 
 	// glowMap gen
-	pixel* glowMap = createGlowMap(image, materials, width, height); 
+	// pixel* glowMap = createGlowMap(image, materials, width, height); 
 
 	// applico il glow
-    applyGlow(image, glowMap, width, height);
+    // applyGlow(image, glowMap, width, height);
 
-    writePPM("output_with_glow.ppm", image, width, height);
+    // writePPM("output_with_glow.ppm", image, width, height);
 
     return 0;
 }

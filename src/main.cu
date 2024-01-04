@@ -9,17 +9,24 @@
 #include "hittables/cube.h"
 #include "hittables/plane.h"
 
+#include "camera.h"
+#include "material.h"
+
 #include <iostream>
 #include <string>
 
-#define WIDTH 720
-#define HEIGHT 405
+#define WIDTH 1920
+#define HEIGHT 1080
 
-#define SAMPLES 1
+#define SAMPLES 5
+
+#define CUDA(f) err = f;\
+    if(err != cudaSuccess)\
+        printf("Cuda Error: %s\n", cudaGetErrorString(err))
 
 void writePPM(const char* path, pixel* img, int width, int height);
 
-__global__ void kernel(pixel* image, int width, int height, Camera camera, Hittable** world, Light** lights, Material* materials)
+__global__ void kernel(pixel* image, int width, int height, Camera* camera, Hittable** world, Light** lights, Material* materials)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -132,38 +139,49 @@ void gaussianBlur(pixel* img, int width, int height, float sigma, int size) {
 
 int main(int argc, char **argv) 
 {
+    cudaDeviceSetLimit(cudaLimitStackSize, 65536);
+
+    cudaError_t err = cudaSuccess;
+
     // Allocate Texture Memory
 	int totalImageBytes = WIDTH * HEIGHT * sizeof(pixel);
 	pixel* h_image = (pixel*) malloc(totalImageBytes);
     
 	pixel* d_image;
-	cudaMalloc(&d_image, totalImageBytes);
-
-	
+	CUDA(cudaMalloc((void**)&d_image, totalImageBytes));
+    
     // Setup
-    Camera camera(60.0f, WIDTH, HEIGHT, 0.01f, 1000.0f);
+    Camera* d_camera;
+    {
+        Camera* camera = new Camera(60.0f, WIDTH, HEIGHT, 0.01f, 1000.0f);
+        CUDA(cudaMalloc((void**)&d_camera, sizeof(Camera)));
+
+        CUDA(cudaMemcpy(d_camera, camera, sizeof(Camera), cudaMemcpyHostToDevice));
+
+        free(camera);
+    }
 
     // Init Lights
     Light** l_lights;
-    cudaMalloc((void**)&l_lights, 1 * sizeof(Light*));
+    CUDA(cudaMalloc((void**)&l_lights, 1 * sizeof(Light*)));
 
     Light** d_lights;
-    cudaMalloc((void**)&d_lights, sizeof(LightsList*));
+    CUDA(cudaMalloc((void**)&d_lights, sizeof(LightsList*)));
 
     initLights<<<1, 1>>>(l_lights, d_lights);
 
     // Init World
     Hittable** l_world;
-    cudaMalloc((void**)&l_world, 4 * sizeof(Hittable*));
+    CUDA(cudaMalloc((void**)&l_world, 4 * sizeof(Hittable*)));
 
     Hittable** d_world;
-    cudaMalloc((void**)&d_world, sizeof(HittablesList*));
+    CUDA(cudaMalloc((void**)&d_world, sizeof(HittablesList*)));
 
     initWorld<<<1, 1>>>(l_world, d_world);
 
     // Init Materials
     Material* d_materials;
-    cudaMalloc((void**)&d_materials, 4 * sizeof(Material));
+    CUDA(cudaMalloc((void**)&d_materials, 4 * sizeof(Material)));
 
     {
         Material* materials = new Material[4];
@@ -172,19 +190,20 @@ int main(int argc, char **argv)
         materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.2f,  0.75f, 0.0f  };
         materials[3] = Material{ glm::vec3{ 0.0f, 0.0f, 0.0f }, 0.05f, 0.0f,  1.85f };
 
-        cudaMemcpy(d_materials, materials, 4 * sizeof(Material), cudaMemcpyHostToDevice);
+        CUDA(cudaMemcpy(d_materials, materials, 4 * sizeof(Material), cudaMemcpyHostToDevice));
     }
     
-
     // Raytrace
 	dim3 BlockSize(16, 16, 1);
 	dim3 GridSize((WIDTH + 15) / 16, (HEIGHT + 15) / 16, 1);
 
-    printf("%u %u %u - %u %u %u\n", BlockSize.x, BlockSize.y, BlockSize.z, GridSize.x, GridSize.y, GridSize.z);
+    printf("Kernel size: %d %d %d (%d %d %d)\n", GridSize.x, GridSize.y, GridSize.z, BlockSize.x, BlockSize.y, BlockSize.z);
+	kernel<<<GridSize, BlockSize>>>(d_image, WIDTH, HEIGHT, d_camera, d_world, d_lights, d_materials);
 
-	kernel<<<GridSize, BlockSize>>>(d_image, WIDTH, HEIGHT, camera, d_world, d_lights, d_materials);
-	cudaMemcpy(h_image, d_image, totalImageBytes, cudaMemcpyDeviceToHost);
-	
+    CUDA(cudaDeviceSynchronize());
+
+	CUDA(cudaMemcpy(h_image, d_image, totalImageBytes, cudaMemcpyDeviceToHost));
+    
     //blurring
     // gaussianBlur(h_image, WIDTH, HEIGHT, 10.0f, 11);
     

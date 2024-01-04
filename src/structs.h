@@ -25,12 +25,12 @@ struct Ray
 struct RayHit
 {
 public:
-    PREFIX RayHit() {}
+    PREFIX_DEVICE RayHit() {}
 
-    PREFIX RayHit(float dist)
+    PREFIX_DEVICE RayHit(float dist)
         : distance(dist) {}
 
-    PREFIX inline void copy(const RayHit& o)
+    PREFIX_DEVICE void copy(const RayHit& o)
     {
         position     = o.position;
         normal       = o.normal;

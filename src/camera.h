@@ -8,7 +8,7 @@
 class Camera
 {
 public:
-    Camera(float fov, float width, float height, float nearPlane, float farPlane)
+    PREFIX Camera(float fov, float width, float height, float nearPlane, float farPlane)
         : m_Position({ 4.0f, 1.75f, 4.5f })
     {
         //matrice di proiezione
@@ -21,27 +21,27 @@ public:
         m_invViewMatrix = glm::inverse(m_ViewMatrix);
     }
 
-    PREFIX inline const glm::vec3& GetPosition() const
+    PREFIX const glm::vec3& GetPosition() const
     {
         return m_Position;
     }
 
-    PREFIX inline const glm::mat4& GetProjectionMatrix() const
+    PREFIX const glm::mat4& GetProjectionMatrix() const
     {
         return m_ProjectionMatrix;
     }
 
-    PREFIX inline const glm::mat4& GetInverseProjectionMatrix() const
+    PREFIX const glm::mat4& GetInverseProjectionMatrix() const
     {
         return m_invProjectionMatrix;
     }
 
-    PREFIX inline const glm::mat4& GetViewMatrix() const
+    PREFIX const glm::mat4& GetViewMatrix() const
     {
         return m_ViewMatrix;
     }
 
-    PREFIX inline const glm::mat4& GetInverseViewMatrix() const
+    PREFIX const glm::mat4& GetInverseViewMatrix() const
     {
         return m_invViewMatrix;
     }

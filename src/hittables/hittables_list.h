@@ -5,10 +5,10 @@
 class HittablesList : public Hittable
 {
 public:
-    PREFIX HittablesList(Hittable** hittables, uint32_t length)
+    PREFIX_DEVICE HittablesList(Hittable** hittables, uint32_t length)
         : m_Hittables(hittables), m_Length(length) {}
     
-    PREFIX virtual bool intersect(const Ray& ray, RayHit& hit) const
+    PREFIX_DEVICE bool intersect(const Ray& ray, RayHit& hit) const
     {
         hit.distance = FLT_MAX;
 
@@ -28,7 +28,7 @@ public:
         return hasHit;
     }
 
-    PREFIX virtual bool hasIntersect(const Ray& ray) const
+    PREFIX_DEVICE virtual bool hasIntersect(const Ray& ray) const
     {
         RayHit hit;
         for(int i = 0; i < m_Length; ++i)

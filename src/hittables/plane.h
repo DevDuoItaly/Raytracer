@@ -7,10 +7,10 @@
 class Plane : public Hittable
 {
 public:
-    PREFIX Plane(const glm::vec3& center, const glm::vec3& normal, uint8_t materialIndx)
+    PREFIX_DEVICE Plane(const glm::vec3& center, const glm::vec3& normal, uint8_t materialIndx)
         : m_Center(center), m_Normal(glm::normalize(normal)), m_MaterialIndx(materialIndx) {}
     
-    PREFIX virtual bool intersect(const Ray& ray, RayHit& hit) const
+    PREFIX_DEVICE virtual bool intersect(const Ray& ray, RayHit& hit) const
     {
         float denom = glm::dot(m_Normal, ray.direction);
         if (std::abs(denom) <= 1e-6)
@@ -27,7 +27,7 @@ public:
         return true;
     }
 
-    PREFIX virtual bool hasIntersect(const Ray& ray) const
+    PREFIX_DEVICE virtual bool hasIntersect(const Ray& ray) const
     {
         float denom = glm::dot(m_Normal, ray.direction);
         if (std::abs(denom) <= 1e-6)

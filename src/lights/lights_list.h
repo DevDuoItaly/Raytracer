@@ -8,12 +8,12 @@ public:
     PREFIX LightsList(Light** lights, uint32_t length)
         : m_Lights(lights), m_Length(length) {}
 
-    PREFIX virtual bool IsInLight(Hittable** world, const glm::vec3& position) const
+    PREFIX_DEVICE virtual bool IsInLight(Hittable** world, const glm::vec3& position) const
     {
         return false;
     }
     
-    PREFIX virtual void GetLightIntensity(Hittable** world, const glm::vec3& position, const glm::vec3& normal, float& intensity) const
+    PREFIX_DEVICE virtual void GetLightIntensity(Hittable** world, const glm::vec3& position, const glm::vec3& normal, float& intensity) const
     {
         intensity = 0.085f;
         for(int i = 0; i < m_Length; ++i)

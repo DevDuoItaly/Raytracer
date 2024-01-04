@@ -2,7 +2,7 @@
 
 #include "core.h"
 
-PREFIX bool debug = false;
+PREFIX_DEVICE bool debug = false;
 
 #include "camera.h"
 #include "structs.h"
@@ -17,22 +17,25 @@ PREFIX bool debug = false;
 
 #include <cstdio>
 
-#define MAX_DEPTH 2
+#define MAX_DEPTH 10
 
-PREFIX inline void UVToDirection(float u, float v, const glm::mat4& invProj, const glm::mat4& invView, glm::vec3& direction)
+PREFIX_DEVICE inline void UVToDirection(float u, float v, const glm::mat4& invProj, const glm::mat4& invView, glm::vec3& direction)
 {
     glm::vec4 target = invProj * glm::vec4(u, v, 1.0f, 1.0f); // Clip Space
     direction = glm::vec3(invView * glm::vec4(glm::normalize(glm::vec3(target) / target.w), 0.0f)); // World space
 }
 
-PREFIX glm::vec3 TraceRay(Ray ray, Hittable** world, Light** lights, Material* materials, float multiplier, int depth/*, curandState* randState*/, int& maxDepth)
+PREFIX_DEVICE glm::vec3 TraceRay(Ray ray, Hittable** world, Light** lights, Material* materials, float multiplier, int depth/*, curandState* randState*/, int& maxDepth)
 {
     if(multiplier < 0.001f)
+    {
+        maxDepth = depth;
         return glm::vec3{ 0.0f, 0.0f, 0.0f };
+    }
 
     if(debug)
         printf("Try hit depth: %d\n", depth);
-
+        
     RayHit hit;
     if(!(*world)->intersect(ray, hit))
     {
@@ -59,7 +62,7 @@ PREFIX glm::vec3 TraceRay(Ray ray, Hittable** world, Light** lights, Material* m
     const Material& material = materials[hit.materialIndx];
     glm::vec3 color = material.color * intensity * multiplier;
 
-    if(depth < MAX_DEPTH)
+    if(depth <= MAX_DEPTH)
     {
         ray.origin = offPosition;
 
@@ -102,6 +105,9 @@ PREFIX glm::vec3 TraceRay(Ray ray, Hittable** world, Light** lights, Material* m
 
             color += TraceRay(ray, world, lights, materials, multiplier * 0.9f, depth + 1/*, randState*/, maxDepth);
         }
+
+        if(material.reflection == 0 && material.refraction == 0)
+            maxDepth = depth;
     }
     else
         maxDepth = depth;
@@ -109,28 +115,28 @@ PREFIX glm::vec3 TraceRay(Ray ray, Hittable** world, Light** lights, Material* m
     return color;
 }
 
-PREFIX glm::vec3 AntiAliasing(float u, float v, float pixelOffX, float pixelOffY, const Camera& camera, Hittable** world, Light** lights, Material* materials/*, curandState* randState*/)
+PREFIX_DEVICE glm::vec3 AntiAliasing(float u, float v, float pixelOffX, float pixelOffY, Camera* camera, Hittable** world, Light** lights, Material* materials/*, curandState* randState*/)
 {
     v = -v;
 
-    const glm::mat4& invProj = camera.GetInverseProjectionMatrix();
-    const glm::mat4& invView = camera.GetInverseViewMatrix();
+    const glm::mat4& invProj = camera->GetInverseProjectionMatrix();
+    const glm::mat4& invView = camera->GetInverseViewMatrix();
     
     glm::vec3 color{ 0.0f, 0.0f, 0.0f };
-    Ray ray{ camera.GetPosition() , glm::vec3{ 0.0f, 0.0f, 0.0f } };
-    
+    Ray ray{ camera->GetPosition() , glm::vec3{ 0.0f, 0.0f, 0.0f } };
+
     int maxDepth = 0;
 
     /*
     float error = 0.003f;
-    if(std::abs(u - -1.0f) < error && std::abs(v - -1.0f) < error)
+    if(std::abs(u - 0.0f) < error && std::abs(v - 0.0f) < error)
     {
         debug = true;
 
         printf("DEBUG!\n");
 
         UVToDirection(u, v, invProj, invView, ray.direction);
-        TraceRay(ray, world, lights, materials, 1, 0, randState, maxDepth);
+        TraceRay(ray, world, lights, materials, 1, 1, maxDepth);
 
         debug = false;
     }
@@ -139,22 +145,26 @@ PREFIX glm::vec3 AntiAliasing(float u, float v, float pixelOffX, float pixelOffY
     */
 
     UVToDirection(u - pixelOffX, v - pixelOffY, invProj, invView, ray.direction);
-    color += TraceRay(ray, world, lights, materials, 1, 0/*, randState*/, maxDepth) / glm::vec3(maxDepth + 1);
+    glm::vec3 c = TraceRay(ray, world, lights, materials, 1, 1/*, randState*/, maxDepth);
+    color += c / glm::vec3(maxDepth);
 
     maxDepth = 0;
 
     UVToDirection(u + pixelOffX, v - pixelOffY, invProj, invView, ray.direction);
-    color += TraceRay(ray, world, lights, materials, 1, 0/*, randState*/, maxDepth) / glm::vec3(maxDepth + 1);
+    c = TraceRay(ray, world, lights, materials, 1, 1/*, randState*/, maxDepth);
+    color += c / glm::vec3(maxDepth);
 
     maxDepth = 0;
 
     UVToDirection(u - pixelOffX, v + pixelOffY, invProj, invView, ray.direction);
-    color += TraceRay(ray, world, lights, materials, 1, 0/*, randState*/, maxDepth) / glm::vec3(maxDepth + 1);
+    c = TraceRay(ray, world, lights, materials, 1, 1/*, randState*/, maxDepth);
+    color += c / glm::vec3(maxDepth);
 
     maxDepth = 0;
 
     UVToDirection(u + pixelOffX, v + pixelOffY, invProj, invView, ray.direction);
-    color += TraceRay(ray, world, lights, materials, 1, 0/*, randState*/, maxDepth) / glm::vec3(maxDepth + 1);
+    c = TraceRay(ray, world, lights, materials, 1, 1/*, randState*/, maxDepth);
+    color += c / glm::vec3(maxDepth);
 
     color *= glm::vec3{ 0.25f, 0.25f, 0.25f };
 
