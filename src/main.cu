@@ -26,7 +26,7 @@
 
 void writePPM(const char* path, pixel* img, int width, int height);
 
-__global__ void kernel(pixel* image, int width, int height, Camera* camera, Hittable** world, Light** lights, Material* materials)
+__global__ void kernel(pixel* image, emissionPixel* emission, int width, int height, Camera* camera, Hittable** world, Light** lights, Material* materials)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -44,11 +44,17 @@ __global__ void kernel(pixel* image, int width, int height, Camera* camera, Hitt
     float pixelOffX = 0.5f / width;
     float pixelOffY = 0.5f / height;
 
-    glm::vec3 result{ 0.0f, 0.0f, 0.0f };
+    HitColorGlow result;
     for(int i = 0; i < SAMPLES; ++i)
-        result += glm::clamp(AntiAliasing(u, v, pixelOffX, pixelOffY, camera, world, lights, materials /*, &randState */), glm::vec3(0.0f), glm::vec3(1.0f));
+    {
+        HitColorGlow sample = AntiAliasing(u, v, pixelOffX, pixelOffY, camera, world, lights, materials /*, &randState */);
+        result.color            += glm::clamp(sample.color,    glm::vec3(0.0f), glm::vec3(1.0f));
+        result.emission         += glm::clamp(sample.emission, glm::vec3(0.0f), glm::vec3(1.0f));
+        result.emissionStrenght += sample.emissionStrenght;
+    }
     
-    image[x + y * width].Set(result / glm::vec3(SAMPLES));
+    image   [x + y * width].Set(result.color    / glm::vec3(SAMPLES));
+    emission[x + y * width].Set(result.emission / glm::vec3(SAMPLES), result.emissionStrenght / SAMPLES);
 }
 
 __global__ void initLights(Light** l_lights, Light** d_lights)

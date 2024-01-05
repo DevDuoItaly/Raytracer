@@ -17,7 +17,7 @@ PREFIX_DEVICE bool debug = false;
 
 #include <cstdio>
 
-#define MAX_DEPTH 10
+#define MAX_DEPTH 20
 
 PREFIX_DEVICE inline void UVToDirection(float u, float v, const glm::mat4& invProj, const glm::mat4& invView, glm::vec3& direction)
 {
@@ -25,17 +25,17 @@ PREFIX_DEVICE inline void UVToDirection(float u, float v, const glm::mat4& invPr
     direction = glm::vec3(invView * glm::vec4(glm::normalize(glm::vec3(target) / target.w), 0.0f)); // World space
 }
 
-PREFIX_DEVICE glm::vec3 TraceRay(Ray ray, Hittable** world, Light** lights, Material* materials, float multiplier, int depth/*, curandState* randState*/, int& maxDepth)
+PREFIX_DEVICE HitColorGlow TraceRay(Ray ray, Hittable** world, Light** lights, Material* materials, float multiplier, int depth/*, curandState* randState*/, int& maxDepth)
 {
     if(multiplier < 0.001f)
     {
         maxDepth = depth;
-        return glm::vec3{ 0.0f, 0.0f, 0.0f };
+        return HitColorGlow{ { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, 0 };
     }
 
     if(debug)
         printf("Try hit depth: %d\n", depth);
-        
+
     RayHit hit;
     if(!(*world)->intersect(ray, hit))
     {
@@ -45,7 +45,8 @@ PREFIX_DEVICE glm::vec3 TraceRay(Ray ray, Hittable** world, Light** lights, Mate
             printf("Ray hitted Sky!\n");
         
         float a = (ray.direction.y + 1.0f) * 0.5f;
-        return ((1.0f - a) * glm::vec3{ 1.0f, 1.0f, 1.0f } + a * glm::vec3{ 0.2f, 0.3f, 0.8f }) * multiplier;
+        glm::vec3 skyColor = ((1.0f - a) * glm::vec3{ 1.0f, 1.0f, 1.0f } + a * glm::vec3{ 0.2f, 0.3f, 0.8f }) * multiplier;
+        return HitColorGlow{ skyColor, { 0.0f, 0.0f, 0.0f }, 0 };
     }
 
     if(debug)
@@ -60,7 +61,9 @@ PREFIX_DEVICE glm::vec3 TraceRay(Ray ray, Hittable** world, Light** lights, Mate
         printf("Intensity: %f\n", intensity);
 
     const Material& material = materials[hit.materialIndx];
-    glm::vec3 color = material.color * intensity * multiplier;
+    glm::vec3 color    = material.color * intensity * multiplier;
+    glm::vec3 emission = material.emissionColor;
+    float emissionStrenght = material.glowStrength;
 
     if(depth <= MAX_DEPTH)
     {
@@ -75,7 +78,16 @@ PREFIX_DEVICE glm::vec3 TraceRay(Ray ray, Hittable** world, Light** lights, Mate
             ray.direction = glm::normalize(ray.direction + material.roughness * 0.0f/*RANDOM_UNIT_EMISPHERE(randState, hit.normal)*/);
 
             if(glm::dot(ray.direction, hit.normal) > 0)
-                color += TraceRay(ray, world, lights, materials, multiplier * material.reflection, depth + 1/*, randState*/, maxDepth);
+            {
+                HitColorGlow hitInfo = TraceRay(ray, world, lights, materials, multiplier * material.reflection, depth + 1/*, randState*/, maxDepth);
+                color += hitInfo.color;
+
+                if(hitInfo.emissionStrenght > 0)
+                {
+                    emission = glm::normalize(emission * glm::vec3(emissionStrenght) + hitInfo.emission * glm::vec3(hitInfo.emissionStrenght));
+                    emissionStrenght = std::max(emissionStrenght, hitInfo.emissionStrenght * material.reflection * 1.25f);
+                }
+            }
         }
 
         if(material.refraction > 0)
@@ -103,7 +115,14 @@ PREFIX_DEVICE glm::vec3 TraceRay(Ray ray, Hittable** world, Light** lights, Mate
             ray.direction = glm::normalize(ray.direction);
             ray.origin = hit.position + ray.direction * 0.01f;
 
-            color += TraceRay(ray, world, lights, materials, multiplier * 0.9f, depth + 1/*, randState*/, maxDepth);
+            HitColorGlow hitInfo = TraceRay(ray, world, lights, materials, multiplier * 0.9f, depth + 1/*, randState*/, maxDepth);
+            color += hitInfo.color;
+            
+            if(hitInfo.emissionStrenght > 0)
+            {
+                emission = glm::normalize(emission * glm::vec3(emissionStrenght) + hitInfo.emission * glm::vec3(hitInfo.emissionStrenght));
+                emissionStrenght = std::max(emissionStrenght, hitInfo.emissionStrenght * 0.95f);
+            }
         }
 
         if(material.reflection == 0 && material.refraction == 0)
@@ -112,26 +131,25 @@ PREFIX_DEVICE glm::vec3 TraceRay(Ray ray, Hittable** world, Light** lights, Mate
     else
         maxDepth = depth;
 
-    return color;
+    return HitColorGlow{ color, emission, emissionStrenght };
 }
 
-PREFIX_DEVICE glm::vec3 AntiAliasing(float u, float v, float pixelOffX, float pixelOffY, Camera* camera, Hittable** world, Light** lights, Material* materials/*, curandState* randState*/)
+PREFIX_DEVICE HitColorGlow AntiAliasing(float u, float v, float pixelOffX, float pixelOffY, Camera* camera, Hittable** world, Light** lights, Material* materials/*, curandState* randState*/)
 {
     v = -v;
 
     const glm::mat4& invProj = camera->GetInverseProjectionMatrix();
     const glm::mat4& invView = camera->GetInverseViewMatrix();
     
-    glm::vec3 color{ 0.0f, 0.0f, 0.0f };
+    HitColorGlow result{ { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, 0.0f };
     Ray ray{ camera->GetPosition() , glm::vec3{ 0.0f, 0.0f, 0.0f } };
 
     int maxDepth = 0;
-
-    /*
+    
     float error = 0.003f;
     if(std::abs(u - 0.0f) < error && std::abs(v - 0.0f) < error)
     {
-        debug = true;
+        // debug = true;
 
         printf("DEBUG!\n");
 
@@ -142,31 +160,39 @@ PREFIX_DEVICE glm::vec3 AntiAliasing(float u, float v, float pixelOffX, float pi
     }
 
     maxDepth = 0;
-    */
 
     UVToDirection(u - pixelOffX, v - pixelOffY, invProj, invView, ray.direction);
-    glm::vec3 c = TraceRay(ray, world, lights, materials, 1, 1/*, randState*/, maxDepth);
-    color += c / glm::vec3(maxDepth);
+    HitColorGlow info = TraceRay(ray, world, lights, materials, 1, 1/*, randState*/, maxDepth);
+    result.color += info.color / glm::vec3(maxDepth);
+    result.emission += info.emission;
+    result.emissionStrenght = info.emissionStrenght;
 
     maxDepth = 0;
 
     UVToDirection(u + pixelOffX, v - pixelOffY, invProj, invView, ray.direction);
-    c = TraceRay(ray, world, lights, materials, 1, 1/*, randState*/, maxDepth);
-    color += c / glm::vec3(maxDepth);
+    HitColorGlow info1 = TraceRay(ray, world, lights, materials, 1, 1/*, randState*/, maxDepth);
+    result.color += info1.color / glm::vec3(maxDepth);
+    result.emission += info1.emission;
+    result.emissionStrenght = std::max(result.emissionStrenght, info1.emissionStrenght);
 
     maxDepth = 0;
 
     UVToDirection(u - pixelOffX, v + pixelOffY, invProj, invView, ray.direction);
-    c = TraceRay(ray, world, lights, materials, 1, 1/*, randState*/, maxDepth);
-    color += c / glm::vec3(maxDepth);
+    HitColorGlow info2 = TraceRay(ray, world, lights, materials, 1, 1/*, randState*/, maxDepth);
+    result.color += info2.color / glm::vec3(maxDepth);
+    result.emission += info2.emission;
+    result.emissionStrenght = std::max(result.emissionStrenght, info2.emissionStrenght);
 
     maxDepth = 0;
 
     UVToDirection(u + pixelOffX, v + pixelOffY, invProj, invView, ray.direction);
-    c = TraceRay(ray, world, lights, materials, 1, 1/*, randState*/, maxDepth);
-    color += c / glm::vec3(maxDepth);
+    HitColorGlow info3 = TraceRay(ray, world, lights, materials, 1, 1/*, randState*/, maxDepth);
+    result.color += info3.color / glm::vec3(maxDepth);
+    result.emission += info3.emission;
+    result.emissionStrenght = std::max(result.emissionStrenght, info3.emissionStrenght);
 
-    color *= glm::vec3{ 0.25f, 0.25f, 0.25f };
+    result.color *= glm::vec3(0.25f);
+    result.emission *= glm::vec3(0.25f);
 
-    return color;
+    return result;
 }

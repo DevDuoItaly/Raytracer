@@ -14,6 +14,25 @@ struct pixel
         y = (unsigned char)(sqrt(c.y) * 255.0f);
         z = (unsigned char)(sqrt(c.z) * 255.0f);
     }
+
+    PREFIX void Add(const glm::vec3& c)
+    {
+        x = std::min(x + (unsigned char)(sqrt(c.x) * 255.0f), 255);
+        y = std::min(y + (unsigned char)(sqrt(c.y) * 255.0f), 255);
+        z = std::min(z + (unsigned char)(sqrt(c.z) * 255.0f), 255);
+    }
+};
+
+struct emissionPixel
+{
+    glm::vec3 emission{ 0.0f, 0.0f, 0.0f };
+    float strenght = 0.0f;
+
+    PREFIX void Set(const glm::vec3& e, float s)
+    {
+        emission = e;
+        strenght = s;
+    }
 };
 
 struct Ray
@@ -42,9 +61,9 @@ public:
 public:
 	glm::vec3 position{ 0.0f, 0.0f, 0.0f };
     glm::vec3 normal  { 0.0f, 0.0f, 0.0f };
-    float distance   = -1;
+    float distance   = -1.0f;
 
-    int materialIndx = -1, objectIndx = -1;
+    int materialIndx = -1.0f, objectIndx = -1.0f;
 };
 
 struct TraceInfo
@@ -52,5 +71,12 @@ struct TraceInfo
     glm::vec3 position{ 0.0f, 0.0f, 0.0f };
     glm::vec3 normal  { 0.0f, 0.0f, 0.0f };
     glm::vec3 color   { 0.0f, 0.0f, 0.0f };
-    float roughness = 0;
+    float roughness = 0.0f;
+};
+
+struct HitColorGlow
+{
+    glm::vec3 color   { 0.0f, 0.0f, 0.0f };
+    glm::vec3 emission{ 0.0f, 0.0f, 0.0f };
+    float emissionStrenght = 0.0f;
 };

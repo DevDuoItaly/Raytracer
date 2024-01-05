@@ -6,6 +6,6 @@ struct Material
 {
     glm::vec3 color;
     float roughness, reflection, refraction;
-    bool hasGlow;
+    glm::vec3 emissionColor;
     float glowStrength;
 };
