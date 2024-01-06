@@ -17,10 +17,10 @@
 #include <algorithm>
 #include <execution>
 
-#define WIDTH 512
-#define HEIGHT 256
+#define WIDTH 1024
+#define HEIGHT 512
 
-#define SAMPLES 10
+#define SAMPLES 1
 
 #define MAXBLUR 5
 
@@ -38,9 +38,8 @@ emissionPixel* downsample(emissionPixel* emission, int width, int height, int sc
 	height /= scaleFactor;
 
 	emissionPixel* result = new emissionPixel[width * height];
-
-	float percStep = 1.0f / (scaleFactor * scaleFactor);
-	glm::vec3 percStepV(percStep);
+	
+	glm::vec3 percStepV(1.0f / (scaleFactor * scaleFactor));
 	
 	for (int y = 0; y < height; ++y)
 		for (int x = 0; x < width; ++x)
@@ -238,29 +237,29 @@ void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
 	float max = 1.0f;
 	int downScaleFactor = 2, upScaleFactor = downScaleFactor;
 
-	int kernelSigma = 650.0f, kernelSize = 6;
+	int kernelSigma = 1000.0f, kernelSize = 8;
 
 	int startW = width, startH = height;
-	pixel* tmpImg = (pixel*) malloc(startW * startH * sizeof(pixel));
+	// pixel* tmpImg = (pixel*) malloc(startW * startH * sizeof(pixel));
 
 	while(max >= 1 && width > 0 && height > 0)
 	{
 		// Downscale framebuffer
-		emissionPixel* downscaled = downsample(emission, width, width, downScaleFactor);
+		emissionPixel* downscaled = downsample(emission, width, height, downScaleFactor);
 		free(emission);
 
 		int downScaleW = width / downScaleFactor, downScaleH = height / downScaleFactor;
-		writePPM("output_downscale.ppm", downscaled, downScaleW, downScaleH);
+		// writePPM("output_downscale.ppm", downscaled, downScaleW, downScaleH);
 
 		// Blur downscaled image
 		gaussianBlur(downscaled, downScaleW, downScaleH, kernelSigma, kernelSize);
 
-		writePPM("output_blur.ppm", downscaled, downScaleW, downScaleH);
+		// writePPM("output_blur.ppm", downscaled, downScaleW, downScaleH);
 		
 		// Upscale blurred image
 		emissionPixel* upscaled = upscale(downscaled, downScaleW, downScaleH, upScaleFactor);
 
-		writePPM("output_upscale.ppm", upscaled, startW, startH);
+		// writePPM("output_upscale.ppm", upscaled, startW, startH);
 
 		// Add upscaled image with base image
 		for(int y = 0; y < startH; ++y)
@@ -272,7 +271,7 @@ void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
 		
 		free(upscaled);
 
-		writePPM("output_add.ppm", image, startW, startH);
+		// writePPM("output_add.ppm", image, startW, startH);
 
 		// Filter downscaled image
 		max = 0.0f;
@@ -288,7 +287,7 @@ void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
 				max = std::max(max, p.strenght);
 			}
 		
-		writePPM("output_filter.ppm", downscaled, downScaleW, downScaleH);
+		// writePPM("output_filter.ppm", downscaled, downScaleW, downScaleH);
 
 		// Continue applying emission
 		width /= downScaleFactor; height /= downScaleFactor;

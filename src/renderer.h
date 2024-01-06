@@ -17,7 +17,7 @@ PREFIX_DEVICE bool debug = false;
 
 #include <cstdio>
 
-#define MAX_DEPTH 20
+#define MAX_DEPTH 5
 
 PREFIX_DEVICE inline void UVToDirection(float u, float v, const glm::mat4& invProj, const glm::mat4& invView, glm::vec3& direction)
 {
@@ -85,7 +85,7 @@ PREFIX_DEVICE HitColorGlow TraceRay(Ray ray, Hittable** world, Light** lights, M
                 if(hitInfo.emissionStrenght > 0)
                 {
                     emission = glm::normalize(emission * glm::vec3(emissionStrenght) + hitInfo.emission * glm::vec3(hitInfo.emissionStrenght));
-                    emissionStrenght = std::max(emissionStrenght, hitInfo.emissionStrenght * material.reflection * 1.25f);
+                    emissionStrenght = max(emissionStrenght, hitInfo.emissionStrenght * material.reflection * 1.25f);
                 }
             }
         }

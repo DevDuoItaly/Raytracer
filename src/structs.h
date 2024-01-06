@@ -8,18 +8,18 @@ struct pixel
 {
     unsigned char x = 0, y = 0, z = 0;
 
-    PREFIX void Set(const glm::vec3& c)
+    PREFIX inline void Set(const glm::vec3& c)
     {
         x = (unsigned char)(sqrt(c.x) * 255.0f);
         y = (unsigned char)(sqrt(c.y) * 255.0f);
         z = (unsigned char)(sqrt(c.z) * 255.0f);
     }
-
-    PREFIX void Add(const glm::vec3& c)
+    
+    PREFIX inline void Add(const glm::vec3& c)
     {
-        x = std::min(x + (unsigned char)(sqrt(c.x) * 255.0f), 255);
-        y = std::min(y + (unsigned char)(sqrt(c.y) * 255.0f), 255);
-        z = std::min(z + (unsigned char)(sqrt(c.z) * 255.0f), 255);
+        x = min(x + (unsigned char)(sqrt(c.x) * 255.0f), 255);
+        y = min(y + (unsigned char)(sqrt(c.y) * 255.0f), 255);
+        z = min(z + (unsigned char)(sqrt(c.z) * 255.0f), 255);
     }
 };
 
