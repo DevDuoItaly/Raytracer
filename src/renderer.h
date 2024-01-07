@@ -85,7 +85,7 @@ PREFIX_DEVICE HitColorGlow TraceRay(Ray ray, Hittable** world, Light** lights, M
                 if(hitInfo.emissionStrenght > 0)
                 {
                     emission = glm::normalize(emission * glm::vec3(emissionStrenght) + hitInfo.emission * glm::vec3(hitInfo.emissionStrenght));
-                    emissionStrenght = max(emissionStrenght, hitInfo.emissionStrenght * material.reflection * 1.25f);
+                    emissionStrenght = glm::max(emissionStrenght, hitInfo.emissionStrenght * material.reflection * 1.25f);
                 }
             }
         }
@@ -151,7 +151,7 @@ PREFIX_DEVICE HitColorGlow AntiAliasing(float u, float v, float pixelOffX, float
     {
         // debug = true;
 
-        printf("DEBUG!\n");
+        // printf("DEBUG!\n");
 
         UVToDirection(u, v, invProj, invView, ray.direction);
         TraceRay(ray, world, lights, materials, 1, 1, maxDepth);

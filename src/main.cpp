@@ -27,9 +27,6 @@
 void writePPM(const char* path, pixel* img,              int width, int height);
 void writePPM(const char* path, emissionPixel* emission, int width, int height);
 
-std::vector<uint32_t> imageHorizontalIter;
-std::vector<uint32_t> imageVerticalIter;
-
 emissionPixel* downsample(emissionPixel* emission, int width, int height, int scaleFactor)
 {
 	int startWidth = width;
@@ -163,75 +160,6 @@ void gaussianBlur(emissionPixel* emission, int width, int height, float sigma, i
     free(tempEmission);
 }
 
-void gaussianBlur(pixel* img, emissionPixel* glowMap, int width, int height, float sigma, int size) 
-{
-    if (size % 2 == 0 || size < 3) 
-	{
-        std::cerr << "La dimensione del kernel deve essere dispari e maggiore di 1." << std::endl;
-        return;
-    }
-
-    float kernel[size][size];
-    float sum = 0.0;
-
-    // calcolo valori del kernel
-    for (int x = -size / 2; x <= size / 2; x++) 
-	{
-        for (int y = -size / 2; y <= size / 2; y++) 
-		{
-            float value = exp(-(x * x + y * y) / (2 * sigma * sigma));
-            kernel[x + size / 2][y + size / 2] = value;
-            sum += value;
-        }
-    }
-
-    // normalizzo il kernel
-    for (int i = 0; i < size; i++) 
-	{
-        for (int j = 0; j < size; j++) 
-		{
-            kernel[i][j] /= sum;
-        }
-    }
-
-    // applico il blur solo ai pixel con glow
-    pixel* tempImg = (pixel*)malloc(width * height * sizeof(pixel));
-    memcpy(tempImg, img, width * height * sizeof(pixel));  // Copia l'immagine originale per preservare i pixel senza glow
-
-    for (int i = 0; i < height; i++) 
-	{
-        for (int j = 0; j < width; j++) 
-		{
-            if (glowMap[i * width + j].emission.x > 0 || glowMap[i * width + j].emission.y > 0 || glowMap[i * width + j].emission.z > 0) 
-			{
-                float sumX = 0.0, sumY = 0.0, sumZ = 0.0;
-
-                for (int k = -size / 2; k <= size / 2; k++) 
-				{
-                    for (int l = -size / 2; l <= size / 2; l++) 
-					{
-                        int x = glm::min(glm::max(j + k, 0), width - 1);
-                        int y = glm::min(glm::max(i + l, 0), height - 1);
-
-                        sumX += img[y * width + x].x * kernel[k + size / 2][l + size / 2];
-                        sumY += img[y * width + x].y * kernel[k + size / 2][l + size / 2];
-                        sumZ += img[y * width + x].z * kernel[k + size / 2][l + size / 2];
-                    }
-                }
-
-                // Clamping i valori tra 0 e 255
-                tempImg[i * width + j].x = (unsigned char)(glm::max(0.0f, glm::min(255.0f, sumX)));
-                tempImg[i * width + j].y = (unsigned char)(glm::max(0.0f, glm::min(255.0f, sumY)));
-                tempImg[i * width + j].z = (unsigned char)(glm::max(0.0f, glm::min(255.0f, sumZ)));
-            }
-        }
-    }
-
-    // Copiare i pixel sfocati nell'immagine originale
-    memcpy(img, tempImg, width * height * sizeof(pixel));
-    free(tempImg);
-}
-
 void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
 {
 	float max = 1.0f;
@@ -300,19 +228,6 @@ void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
 
 int main()
 {
-	// Setup framebuffer
-    pixel* image = new pixel[WIDTH * HEIGHT];
-
-	emissionPixel* emission = new emissionPixel[WIDTH * HEIGHT];
-
-    imageHorizontalIter.resize(WIDTH);
-	imageVerticalIter.resize(HEIGHT);
-	for (uint32_t i = 0; i < WIDTH; i++)
-		imageHorizontalIter[i] = i;
-	for (uint32_t i = 0; i < HEIGHT; i++)
-		imageVerticalIter[i] = i;
-
-
 	// Setup world
 	Camera camera(60.0f, WIDTH, HEIGHT, 0.01f, 1000.0f);
 
@@ -369,81 +284,130 @@ int main()
 	bool d = false;
 	ThreadPool pool(d ? 1 : (std::thread::hardware_concurrency() - 1));
 
-	float totalTasks;
-
 	printf("Running Raytracing MT...\n");
 	Timer t;
 
 	int prevElapsed = -1;
 
-	for(const uint32_t& y : imageVerticalIter)
+	int splitH = 64, splitV = 32;
+	int stepX = WIDTH / splitH, stepY = HEIGHT / splitV;
+
+	float totalTasks = splitH * splitV * 2;
+
+	Redis redis;
+    redis.Connect();
+
+	std::mutex lock;
+
+	for(int sY = 0; sY < splitV; ++sY)
 	{
-		for(const uint32_t& x : imageHorizontalIter)
+		for(int sX = 0; sX < splitH; ++sX)
 		{
-			pool.enqueue([&image, &emission, &camera, &world, &lights, &materials, x, y]()
+			pool.enqueue([&redis, &lock, &camera, &world, &lights, &materials, sX, sY, &stepX, &stepY]()
 			{
-				// -1 / 1
-				float u = ((float)x / (float)WIDTH ) * 2.0f - 1.0f;
-				float v = ((float)y / (float)HEIGHT) * 2.0f - 1.0f;
+				// Setup local images
+				pixel* image = new pixel[stepX * stepY];
+				emissionPixel* emission = new emissionPixel[stepX * stepY];
 
-				// curandState randState(x + y * WIDTH);
+				for(int nY = 0; nY < stepY; ++nY)
+					for(int nX = 0; nX < stepX; ++nX)
+					{
+						int x = nX + sX * stepX, y = nY + sY * stepY;
 
-				float pixelOffX = 0.5f / WIDTH;
-				float pixelOffY = 0.5f / HEIGHT;
+						// -1 / 1
+						float u = ((float)x / (float)WIDTH ) * 2.0f - 1.0f;
+						float v = ((float)y / (float)HEIGHT) * 2.0f - 1.0f;
 
-				HitColorGlow result;
-				for(int i = 0; i < SAMPLES; ++i)
-				{
-					HitColorGlow sample = AntiAliasing(u, v, pixelOffX, pixelOffY, &camera, &world, &lights, materials /*, &randState */);
-					result.color            += glm::clamp(sample.color,    glm::vec3(0.0f), glm::vec3(1.0f));
-					result.emission         += glm::clamp(sample.emission, glm::vec3(0.0f), glm::vec3(1.0f));
-					result.emissionStrenght += sample.emissionStrenght;
-				}
+						// curandState randState(x + y * WIDTH);
 
-				image   [x + y * WIDTH].Set(result.color    / glm::vec3(SAMPLES));
-				emission[x + y * WIDTH].Set(result.emission / glm::vec3(SAMPLES), result.emissionStrenght / SAMPLES);
+						float pixelOffX = 0.5f / WIDTH;
+						float pixelOffY = 0.5f / HEIGHT;
+
+						HitColorGlow result;
+						for(int i = 0; i < SAMPLES; ++i)
+						{
+							HitColorGlow sample = AntiAliasing(u, v, pixelOffX, pixelOffY, &camera, &world, &lights, materials /*, &randState */);
+							result.color            += glm::clamp(sample.color,    glm::vec3(0.0f), glm::vec3(1.0f));
+							result.emission         += glm::clamp(sample.emission, glm::vec3(0.0f), glm::vec3(1.0f));
+							result.emissionStrenght += sample.emissionStrenght;
+						}
+
+						image   [nX + nY * stepX].Set(result.color    / glm::vec3(SAMPLES));
+						emission[nX + nY * stepY].Set(result.emission / glm::vec3(SAMPLES), result.emissionStrenght / SAMPLES);
+					}
+				
+				std::lock_guard<std::mutex> l(lock);
+
+				redis.SendImage(reinterpret_cast<unsigned char*>(image),    sX, sY, stepX, stepY, sizeof(pixel));
+				redis.SendImage(reinterpret_cast<unsigned char*>(emission), sX, sY, stepX, stepY, sizeof(emissionPixel));
+
+				free(image);
+				free(emission);
 			});
 		}
 
-		totalTasks = y * WIDTH;
-
 		int elapsed = (int)(t.ElapsedMillis() * 0.001f);
 		if(elapsed != prevElapsed)
 		{
 			prevElapsed = elapsed;
 
-			int invRemain = totalTasks - pool.GetTasksCount();
-			printf("Progress: %f%%\n", (float)(invRemain * 100) / totalTasks);
+			std::lock_guard<std::mutex> l(lock);
+			printf("Progress: %f%%\n", (float)(redis.GetCount() * 100) / totalTasks);
 		}
 	}
-
-	/*
-    Redis redis;
-    redis.Connect();
-
-    redis.SendImage(&image[0].x, WIDTH, HEIGHT, sizeof(pixel));
-
-    memset(image, 0, WIDTH * HEIGHT * sizeof(pixel));
-    redis.ReceiveImage(&image[0].x, WIDTH, HEIGHT, sizeof(pixel));
-	*/
-
+	
 	t.Reset();
-	while(pool.GetTasksCount() > 0)
+	bool waiting = true;
+	while(waiting)
 	{
 		int elapsed = (int)(t.ElapsedMillis() * 0.001f);
 		if(elapsed != prevElapsed)
 		{
 			prevElapsed = elapsed;
-			int invRemain = totalTasks - pool.GetTasksCount();
-			printf("Progress: %f%%\n", (float)(invRemain * 100) / totalTasks);
+
+			std::lock_guard<std::mutex> l(lock);
+			printf("Progress: %f%%\n", (float)(redis.GetCount() * 100) / totalTasks);
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+		std::lock_guard<std::mutex> l(lock);
+		waiting = redis.GetCount() < totalTasks;
+	}
+
+	printf("Progress: 100%%\n");
+	printf("Ended in: %lf ms\n", t.ElapsedMillis());
+	
+	printf("Recomposing image!\n");
+	t.Reset();
+
+	// Recompose the image
+	pixel* image = (pixel*) malloc(WIDTH * HEIGHT * sizeof(pixel));
+	emissionPixel* emission = (emissionPixel*) malloc(WIDTH * HEIGHT * sizeof(emissionPixel));
+
+	pixel         img[stepX * stepY];
+	emissionPixel em[stepX * stepY];
+	int x = 0, y = 0;
+	for(int i = 0; i < totalTasks; i += 2)
+	{
+		redis.ReceiveImage(reinterpret_cast<unsigned char*>(img), x, y, stepX, stepY, sizeof(pixel));
+		redis.ReceiveImage(reinterpret_cast<unsigned char*>(em),  x, y, stepX, stepY, sizeof(emissionPixel));
+
+		for(int j = 0; j < stepY; ++j)
+		{
+			memcpy(image    + x * stepX + ((y * stepY) + j) * WIDTH, img + j * stepX, stepX * sizeof(pixel));
+			memcpy(emission + x * stepX + ((y * stepY) + j) * WIDTH, em  + j * stepX, stepX * sizeof(emissionPixel));
+		}
 	}
 
 	printf("Ended in: %lf ms\n", t.ElapsedMillis());
 
+	printf("Appling glow!\n");
+	t.Reset();
+
 	applyGlow(image, emission, WIDTH, HEIGHT);
+
+	printf("Ended in: %lf ms\n", t.ElapsedMillis());
 
     writePPM("output.ppm", image, WIDTH, HEIGHT);
 

@@ -17,9 +17,9 @@ struct pixel
     
     PREFIX inline void Add(const glm::vec3& c)
     {
-        x = min(x + (unsigned char)(sqrt(c.x) * 255.0f), 255);
-        y = min(y + (unsigned char)(sqrt(c.y) * 255.0f), 255);
-        z = min(z + (unsigned char)(sqrt(c.z) * 255.0f), 255);
+        x = glm::min(x + (unsigned char)(sqrt(c.x) * 255.0f), 255);
+        y = glm::min(y + (unsigned char)(sqrt(c.y) * 255.0f), 255);
+        z = glm::min(z + (unsigned char)(sqrt(c.z) * 255.0f), 255);
     }
 };
 
