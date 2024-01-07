@@ -47,6 +47,6 @@ int main()
     float pixelOffX = 0.5f / width;
     float pixelOffY = 0.5f / height;
 	glm::vec3 result = AntiAliasing(u, v, pixelOffX, pixelOffY, &camera, &world, &lights, materials /*, &randState*/);
-
+	
     return 0;
 }

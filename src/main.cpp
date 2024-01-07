@@ -239,9 +239,7 @@ int main()
 	
     Light* lights = new LightsList(l_light, light_count);
 
-    // -- Init World
-	// curandState* rnd = new curandState(-1);
-
+	// Init world
 	int spawnW = 7;
 
 	uint32_t world_count = 49 + 4;
@@ -269,8 +267,8 @@ int main()
     // -- Init Materials
     Material* materials = new Material[7];
 	materials[0] = Material{ glm::vec3{ 0.8f, 0.8f, 0.0f }, 0.0f,  0.0f,  0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
-	materials[1] = Material{ glm::vec3{ 0.0f, 0.0f, 0.0f }, 0.05f, 0.0f,  1.85f, { 0.0f, 0.0f, 0.0f }, 0.0f };
-	materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.2f,  0.75f, 0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
+	materials[1] = Material{ glm::vec3{ 0.0f, 0.0f, 0.0f }, 0.0f,  0.0f,  1.85f, { 0.0f, 0.0f, 0.0f }, 0.0f };
+	materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.8f,  0.75f, 0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
 	materials[3] = Material{ glm::vec3{ 0.8f, 0.2f, 0.1f }, 0.05f, 0.0f,  0.0f,  { 0.7f, 0.1f, 0.2f }, 4.5f };
 	materials[4] = Material{ glm::vec3{ 0.1f, 0.7f, 0.2f }, 0.08f, 0.02f, 0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
 	materials[5] = Material{ glm::vec3{ 0.1f, 0.2f, 0.7f }, 0.08f, 0.02f, 0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
@@ -318,7 +316,7 @@ int main()
 						float u = ((float)x / (float)WIDTH ) * 2.0f - 1.0f;
 						float v = ((float)y / (float)HEIGHT) * 2.0f - 1.0f;
 
-						// curandState randState(x + y * WIDTH);
+						curandState randState(x + y * WIDTH);
 
 						float pixelOffX = 0.5f / WIDTH;
 						float pixelOffY = 0.5f / HEIGHT;
@@ -326,7 +324,7 @@ int main()
 						HitColorGlow result;
 						for(int i = 0; i < SAMPLES; ++i)
 						{
-							HitColorGlow sample = AntiAliasing(u, v, pixelOffX, pixelOffY, &camera, &world, &lights, materials /*, &randState */);
+							HitColorGlow sample = AntiAliasing(u, v, pixelOffX, pixelOffY, &camera, &world, &lights, materials, &randState);
 							result.color            += glm::clamp(sample.color,    glm::vec3(0.0f), glm::vec3(1.0f));
 							result.emission         += glm::clamp(sample.emission, glm::vec3(0.0f), glm::vec3(1.0f));
 							result.emissionStrenght += sample.emissionStrenght;
@@ -355,9 +353,10 @@ int main()
 			printf("Progress: %f%%\n", (float)(redis.GetCount() * 100) / totalTasks);
 		}
 	}
-	
+
 	t.Reset();
 	bool waiting = true;
+
 	while(waiting)
 	{
 		int elapsed = (int)(t.ElapsedMillis() * 0.001f);

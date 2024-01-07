@@ -9,6 +9,8 @@
 #include "hittables/cube.h"
 #include "hittables/plane.h"
 
+#include "utils/timer.h"
+
 #include "camera.h"
 #include "material.h"
 
@@ -35,8 +37,8 @@ __global__ void kernel(pixel* image, emissionPixel* emission, int width, int hei
     if (x >= width || y >= height)
         return;
     
-    // curandState_t randState;
-    // curand_init(x + y * width, 0, 0, &randState);
+    curandState_t randState;
+    curand_init(x + y * width, 0, 0, &randState);
 
     // -1 / 1
     float u = ((float)x / (float)width ) * 2.0f - 1.0f;
@@ -48,7 +50,7 @@ __global__ void kernel(pixel* image, emissionPixel* emission, int width, int hei
     HitColorGlow result;
     for(int i = 0; i < SAMPLES; ++i)
     {
-        HitColorGlow sample = AntiAliasing(u, v, pixelOffX, pixelOffY, camera, world, lights, materials /*, &randState */);
+        HitColorGlow sample = AntiAliasing(u, v, pixelOffX, pixelOffY, camera, world, lights, materials, &randState);
         result.color            += glm::clamp(sample.color,    glm::vec3(0.0f), glm::vec3(1.0f));
         result.emission         += glm::clamp(sample.emission, glm::vec3(0.0f), glm::vec3(1.0f));
         result.emissionStrenght += sample.emissionStrenght;
@@ -356,8 +358,8 @@ int main(int argc, char **argv)
         Material* materials = new Material[4];
         materials[0] = Material{ { 0.8f, 0.8f, 0.0f }, 0.0f,  0.0f,  0.0f , { 0.0f, 0.0f, 0.0f }, 0.0f };
         materials[1] = Material{ { 0.8f, 0.2f, 0.1f }, 0.08f, 0.02f, 0.0f , { 1.0f, 0.0f, 0.0f }, 4.5f };
-        materials[2] = Material{ { 0.8f, 0.8f, 0.8f }, 0.2f,  0.75f, 0.0f , { 0.0f, 0.0f, 0.0f }, 0.0f };
-        materials[3] = Material{ { 0.0f, 0.0f, 0.0f }, 0.05f, 0.0f,  1.85f, { 0.0f, 0.0f, 0.0f }, 0.0f };
+        materials[2] = Material{ { 0.8f, 0.8f, 0.8f }, 0.9f,  0.75f, 0.0f , { 0.0f, 0.0f, 0.0f }, 0.0f };
+        materials[3] = Material{ { 0.0f, 0.0f, 0.0f }, 0.0f,  0.0f,  1.85f, { 0.0f, 0.0f, 0.0f }, 0.0f };
 
         CUDA(cudaMemcpy(d_materials, materials, 4 * sizeof(Material), cudaMemcpyHostToDevice))
     }
@@ -366,13 +368,22 @@ int main(int argc, char **argv)
 	dim3 BlockSize(16, 16, 1);
 	dim3 GridSize((WIDTH + 15) / 16, (HEIGHT + 15) / 16, 1);
 
+    Timer t;
+
     printf("Kernel size: %d %d %d (%d %d %d)\n", GridSize.x, GridSize.y, GridSize.z, BlockSize.x, BlockSize.y, BlockSize.z);
 	kernel<<<GridSize, BlockSize>>>(d_image, d_emission, WIDTH, HEIGHT, d_camera, d_world, d_lights, d_materials);
 
     CUDA(cudaDeviceSynchronize())
 
+    printf("Ended in %lf\n", t.ElapsedMillis());
+
+    printf("Applying Glow\n");
+    t.Reset();
+
     // TODO: Bloom
     applyGlow(d_image, d_emission, WIDTH, HEIGHT);
+
+    printf("Ended in %lf\n", t.ElapsedMillis());
 
     CUDA(cudaMemcpy(h_image, d_image, totalImageBytes, cudaMemcpyDeviceToHost))
     

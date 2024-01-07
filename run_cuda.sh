@@ -1,0 +1,1 @@
+nvcc -std=c++17 --expt-relaxed-constexpr -lcurand ./src/main.cu -I./src/ -I./src/vendor/ -o Raytracer_Cuda.ds && ./Raytracer_Cuda.ds

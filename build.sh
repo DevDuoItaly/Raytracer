@@ -1,1 +1,0 @@
-nvcc -g -G ./src/main.cu -I./src/ -I./src/vendor/ -o Raytracer_Cuda.ds
