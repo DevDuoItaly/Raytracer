@@ -5,8 +5,14 @@
 class LightsList : public Light
 {
 public:
-    PREFIX LightsList(Light** lights, uint32_t length)
+    PREFIX_DEVICE LightsList(Light** lights, uint32_t length)
         : m_Lights(lights), m_Length(length) {}
+    
+    PREFIX_DEVICE ~LightsList()
+    {
+        for(int i = 0; i < m_Length; ++i)
+            delete m_Lights[i];
+    }
 
     PREFIX_DEVICE virtual bool IsInLight(Hittable** world, const glm::vec3& position) const
     {
@@ -29,7 +35,7 @@ public:
                 intensity = intens;
         }
     }
-    
+
 public:
     Light** m_Lights = nullptr;
     int m_Length = -1;

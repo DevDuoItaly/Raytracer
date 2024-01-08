@@ -251,11 +251,11 @@ void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
 	CUDA(cudaMalloc((void**)&d_kernel, (kernelSize * 2 + 1) * sizeof(float)))
 
 
-    int totalEmissionBytes = width * height * sizeof(emissionPixel);
-    emissionPixel* h_tempEmission = (emissionPixel*) malloc(totalEmissionBytes);
+    // int totalEmissionBytes = width * height * sizeof(emissionPixel);
+    // emissionPixel* h_tempEmission = (emissionPixel*) malloc(totalEmissionBytes);
 
-    int totalBytes = width * height * sizeof(pixel);
-    pixel* h_tempImage = (pixel*) malloc(totalBytes);
+    // int totalBytes = width * height * sizeof(pixel);
+    // pixel* h_tempImage = (pixel*) malloc(totalBytes);
 
     int downScaleW = width / scale, downScaleH = height / scale;
 
@@ -267,33 +267,33 @@ void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
         dim3 DownGridSize((downScaleW + 15) / 16, (downScaleH + 15) / 16, 1);
 		downsample<<<DownGridSize, BlockSize>>>(emission, d_tempEmission, width, downScaleW, downScaleH, scaleFactor, percStepV);
 
-        CUDA(cudaMemcpy(h_tempEmission, d_tempEmission, totalEmissionBytes, cudaMemcpyDeviceToHost))
-		writePPM("output_downscale.ppm", h_tempEmission, startW, startH);
+        // CUDA(cudaMemcpy(h_tempEmission, d_tempEmission, totalEmissionBytes, cudaMemcpyDeviceToHost))
+		// writePPM("output_downscale.ppm", h_tempEmission, startW, startH);
 
 		// Blur downscaled image
         createKernel<<<1, 1>>>(d_kernel, kernelSigma, kernelSize);
 		gaussianBlur<<<DownGridSize, BlockSize>>>(emission, d_tempEmission, d_kernel, width, height, downScaleW, downScaleH, kernelSize);
 
-        CUDA(cudaMemcpy(h_tempEmission, emission, totalEmissionBytes, cudaMemcpyDeviceToHost))
-		writePPM("output_blur.ppm", h_tempEmission, startW, startH);
+        // CUDA(cudaMemcpy(h_tempEmission, emission, totalEmissionBytes, cudaMemcpyDeviceToHost))
+		// writePPM("output_blur.ppm", h_tempEmission, startW, startH);
 		
 		// Upscale blurred image
 		upscale<<<DownGridSize, BlockSize>>>(emission, d_tempEmission, startW, downScaleW, downScaleH, scale);
 
-        CUDA(cudaMemcpy(h_tempEmission, d_tempEmission, totalEmissionBytes, cudaMemcpyDeviceToHost))
-		writePPM("output_upscale.ppm", h_tempEmission, startW, startH);
+        // CUDA(cudaMemcpy(h_tempEmission, d_tempEmission, totalEmissionBytes, cudaMemcpyDeviceToHost))
+		// writePPM("output_upscale.ppm", h_tempEmission, startW, startH);
 
 		// Add upscaled image with base image
         addImages<<<GridSize, BlockSize>>>(image, d_tempEmission, startW, startH);
 
-        CUDA(cudaMemcpy(h_tempImage, image, totalBytes, cudaMemcpyDeviceToHost))
-		writePPM("output_add.ppm", h_tempImage, startW, startH);
+        // CUDA(cudaMemcpy(h_tempImage, image, totalBytes, cudaMemcpyDeviceToHost))
+		// writePPM("output_add.ppm", h_tempImage, startW, startH);
 
 		// Filter downscaled image
         filterEmission<<<DownGridSize, BlockSize>>>(emission, startW, startH);
 
-        CUDA(cudaMemcpy(h_tempEmission, emission, totalEmissionBytes, cudaMemcpyDeviceToHost))
-		writePPM("output_filter.ppm", h_tempEmission, startW, startH);
+        // CUDA(cudaMemcpy(h_tempEmission, emission, totalEmissionBytes, cudaMemcpyDeviceToHost))
+		// writePPM("output_filter.ppm", h_tempEmission, startW, startH);
 
 		// Continue applying emission
         scale *= 2;
@@ -301,6 +301,9 @@ void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
         downScaleW = width / scale;
         downScaleH = height / scale;
 	}
+
+    cudaFree(d_kernel);
+    cudaFree(d_tempEmission);
 }
 
 int main(int argc, char **argv) 
@@ -309,15 +312,11 @@ int main(int argc, char **argv)
 
     // Allocate Texture Memory
 	int totalImageBytes = WIDTH * HEIGHT * sizeof(pixel);
-	pixel* h_image = (pixel*) malloc(totalImageBytes);
-    
 	pixel* d_image;
 	CUDA(cudaMalloc((void**)&d_image, totalImageBytes))
 
     // Allocate Emission Texture Memory
     int totalEmissionImageBytes = WIDTH * HEIGHT * sizeof(emissionPixel);
-	emissionPixel* h_emission = (emissionPixel*) malloc(totalEmissionImageBytes);
-    
 	emissionPixel* d_emission;
 	CUDA(cudaMalloc((void**)&d_emission, totalEmissionImageBytes))
     
@@ -329,12 +328,13 @@ int main(int argc, char **argv)
 
         CUDA(cudaMemcpy(d_camera, camera, sizeof(Camera), cudaMemcpyHostToDevice))
 
-        free(camera);
+        delete camera;
     }
 
     // Init Lights
     Light** l_lights;
-    CUDA(cudaMalloc((void**)&l_lights, 1 * sizeof(Light*)))
+    int lightsCount = 1;
+    CUDA(cudaMalloc((void**)&l_lights, lightsCount * sizeof(Light*)))
 
     Light** d_lights;
     CUDA(cudaMalloc((void**)&d_lights, sizeof(LightsList*)))
@@ -343,7 +343,8 @@ int main(int argc, char **argv)
 
     // Init World
     Hittable** l_world;
-    CUDA(cudaMalloc((void**)&l_world, 4 * sizeof(Hittable*)))
+    int worldCount = 4;
+    CUDA(cudaMalloc((void**)&l_world, worldCount * sizeof(Hittable*)))
 
     Hittable** d_world;
     CUDA(cudaMalloc((void**)&d_world, sizeof(HittablesList*)))
@@ -362,6 +363,8 @@ int main(int argc, char **argv)
         materials[3] = Material{ { 0.0f, 0.0f, 0.0f }, 0.0f,  0.0f,  1.85f, { 0.0f, 0.0f, 0.0f }, 0.0f };
 
         CUDA(cudaMemcpy(d_materials, materials, 4 * sizeof(Material), cudaMemcpyHostToDevice))
+
+        delete materials;
     }
     
     // Raytrace
@@ -385,17 +388,20 @@ int main(int argc, char **argv)
 
     printf("Ended in %lf\n", t.ElapsedMillis());
 
+    pixel* h_image = (pixel*) malloc(totalImageBytes);
     CUDA(cudaMemcpy(h_image, d_image, totalImageBytes, cudaMemcpyDeviceToHost))
     
     // Saving and closing
 	writePPM("output.ppm", h_image, WIDTH, HEIGHT);
 
     // Free
-    cudaFreeList<<<1, 1>>>((void**)l_lights, (void**)d_lights, 1);
-    cudaFreeList<<<1, 1>>>((void**)l_world,  (void**)d_world,  2);
+    cudaFreeList<<<1, 1>>>((void**)l_lights, (void**)d_lights, lightsCount);
+    cudaFreeList<<<1, 1>>>((void**)l_world,  (void**)d_world,  worldCount);
 
     cudaFree(d_materials);
+    cudaFree(d_camera);
 
+    cudaFree(d_emission);
 	cudaFree(d_image);
 	free(h_image);
 	return 0;

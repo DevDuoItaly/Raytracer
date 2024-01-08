@@ -20,7 +20,7 @@
 #define WIDTH 1024
 #define HEIGHT 512
 
-#define SAMPLES 1
+#define SAMPLES 5
 
 #define MAXBLUR 5
 
@@ -224,6 +224,8 @@ void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
 		upScaleFactor *= 2;
 		kernelSize *= 2;
 	}
+
+	free(emission);
 }
 
 int main()
@@ -233,54 +235,61 @@ int main()
 
     // -- Init Lights
 	uint32_t light_count = 1;
-	Light** l_light = (Light**) malloc(light_count * sizeof(Light*));
-	l_light[0] = new DirectionalLight({ -0.25f, -0.75f, 0.45f  });
-	//l_light[1] = new DirectionalLight({  0.85f, -0.15f, 0.15f });
-	
-    Light* lights = new LightsList(l_light, light_count);
+	Light* lights;
+	{
+		Light** l_light = (Light**) malloc(light_count * sizeof(Light*));
+		l_light[0] = new DirectionalLight({ -0.25f, -0.75f, 0.45f  });
+		//l_light[1] = new DirectionalLight({  0.85f, -0.15f, 0.15f });
+		
+		lights = new LightsList(l_light, light_count);
+	}
 
 	// Init world
 	int spawnW = 7;
 
 	uint32_t world_count = 49 + 4;
-	Hittable** l_world = (Hittable**) malloc(world_count * sizeof(Hittable*));
-	l_world[0] = new Sphere({  0.0f, -1000.0f, 0.0f }, 1000.0f, 0);
-	int i = 0;
-	for(; i < world_count - 4; ++i)
+	Hittable* world;
 	{
-		l_world[i + 1] = new Sphere({ (((int)i % spawnW) - 3) * 1.5f, 0.3f, ((int)(i / spawnW) - 3) * 1.5f }, 0.3f, (int)(0 /*RANDOM_UNIT(rnd)*/ * 3) + 4);
+		Hittable** l_world = (Hittable**) malloc(world_count * sizeof(Hittable*));
+		l_world[0] = new Sphere({  0.0f, -1000.0f, 0.0f }, 1000.0f, 0);
+		int i = 0;
+		for(; i < world_count - 4; ++i)
+		{
+			l_world[i + 1] = new Sphere({ (((int)i % spawnW) - 3) * 1.5f, 0.3f, ((int)(i / spawnW) - 3) * 1.5f }, 0.3f, (int)(0 /*RANDOM_UNIT(rnd)*/ * 3) + 4);
+		}
+		++i;
+
+		l_world[i++] = new Sphere({  0.0f, 1.0f, 0.0f }, 1.0f, 1);
+		l_world[i++] = new Sphere({ -3.0f, 1.0f, 0.0f }, 1.0f, 2);
+		l_world[i++] = new Sphere({  3.0f, 1.0f, 0.0f }, 1.0f, 3);
+
+		// l_world[1] = new Sphere({  0.0f,  0.0f,   -4.0f }, 0.5f,   1);
+		// l_world[2] = new Sphere({ -1.5f,  0.5f,   -4.0f }, 1.0f,   2);
+		// l_world[3] = new Sphere({  1.5f,  0.5f,   -4.0f }, 1.0f,   3);
+		// l_world[4] = new Sphere({  1.5f,  1.0f,   -4.0f }, 0.5f,   4);
+		// l_world[4] = new Plane ({  0.0f,  -5.0f, 5.0f }, { 0.0f,  -1.0f, 0.0f }, 3);
+		
+		world = new HittablesList(l_world, world_count);
 	}
-	++i;
-
-	l_world[i++] = new Sphere({  0.0f, 1.0f, 0.0f }, 1.0f, 1);
-	l_world[i++] = new Sphere({ -3.0f, 1.0f, 0.0f }, 1.0f, 2);
-	l_world[i++] = new Sphere({  3.0f, 1.0f, 0.0f }, 1.0f, 3);
-
-	// l_world[1] = new Sphere({  0.0f,  0.0f,   -4.0f }, 0.5f,   1);
-	// l_world[2] = new Sphere({ -1.5f,  0.5f,   -4.0f }, 1.0f,   2);
-	// l_world[3] = new Sphere({  1.5f,  0.5f,   -4.0f }, 1.0f,   3);
-	// l_world[4] = new Sphere({  1.5f,  1.0f,   -4.0f }, 0.5f,   4);
-	// l_world[4] = new Plane ({  0.0f,  -5.0f, 5.0f }, { 0.0f,  -1.0f, 0.0f }, 3);
-	
-	Hittable* world = new HittablesList(l_world, world_count);
 
     // -- Init Materials
     Material* materials = new Material[7];
-	materials[0] = Material{ glm::vec3{ 0.8f, 0.8f, 0.0f }, 0.0f,  0.0f,  0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
-	materials[1] = Material{ glm::vec3{ 0.0f, 0.0f, 0.0f }, 0.0f,  0.0f,  1.85f, { 0.0f, 0.0f, 0.0f }, 0.0f };
-	materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.8f,  0.75f, 0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
-	materials[3] = Material{ glm::vec3{ 0.8f, 0.2f, 0.1f }, 0.05f, 0.0f,  0.0f,  { 0.7f, 0.1f, 0.2f }, 4.5f };
-	materials[4] = Material{ glm::vec3{ 0.1f, 0.7f, 0.2f }, 0.08f, 0.02f, 0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
-	materials[5] = Material{ glm::vec3{ 0.1f, 0.2f, 0.7f }, 0.08f, 0.02f, 0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
-	materials[6] = Material{ glm::vec3{ 0.1f, 0.2f, 0.7f }, 0.1f,  0.05f, 0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
-	// materials[1] = Material{ glm::vec3{ 0.7f, 0.3f, 0.3f }, 0.9f,  0.08f, 0.0f  };
-	// materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.3f,  0.25f, 0.0f  };
-	// materials[3] = Material{ glm::vec3{ 0.0f, 0.0f, 0.0f }, 0.05f, 0.0f,  1.85f };
-	// materials[4] = Material{ glm::vec3{ 0.1f, 0.8f, 0.2f }, 0.1f,  0.09f, 0.0f  };
+	{
+		materials[0] = Material{ glm::vec3{ 0.8f, 0.8f, 0.0f }, 0.0f,  0.0f,  0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
+		materials[1] = Material{ glm::vec3{ 0.0f, 0.0f, 0.0f }, 0.0f,  0.0f,  1.85f, { 0.0f, 0.0f, 0.0f }, 0.0f };
+		materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.8f,  0.75f, 0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
+		materials[3] = Material{ glm::vec3{ 0.8f, 0.2f, 0.1f }, 0.05f, 0.0f,  0.0f,  { 0.7f, 0.1f, 0.2f }, 4.5f };
+		materials[4] = Material{ glm::vec3{ 0.1f, 0.7f, 0.2f }, 0.08f, 0.02f, 0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
+		materials[5] = Material{ glm::vec3{ 0.1f, 0.2f, 0.7f }, 0.08f, 0.02f, 0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
+		materials[6] = Material{ glm::vec3{ 0.1f, 0.2f, 0.7f }, 0.1f,  0.05f, 0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
+		// materials[1] = Material{ glm::vec3{ 0.7f, 0.3f, 0.3f }, 0.9f,  0.08f, 0.0f  };
+		// materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.3f,  0.25f, 0.0f  };
+		// materials[3] = Material{ glm::vec3{ 0.0f, 0.0f, 0.0f }, 0.05f, 0.0f,  1.85f };
+		// materials[4] = Material{ glm::vec3{ 0.1f, 0.8f, 0.2f }, 0.1f,  0.09f, 0.0f  };
+	}
 
 	// Raytrace
-	bool d = false;
-	ThreadPool pool(d ? 1 : (std::thread::hardware_concurrency() - 1));
+	ThreadPool pool(std::thread::hardware_concurrency() - 1);
 
 	printf("Running Raytracing MT...\n");
 	Timer t;
@@ -339,8 +348,8 @@ int main()
 				redis.SendImage(reinterpret_cast<unsigned char*>(image),    sX, sY, stepX, stepY, sizeof(pixel));
 				redis.SendImage(reinterpret_cast<unsigned char*>(emission), sX, sY, stepX, stepY, sizeof(emissionPixel));
 
-				free(image);
-				free(emission);
+				delete image;
+				delete emission;
 			});
 		}
 
@@ -374,6 +383,11 @@ int main()
 		waiting = redis.GetCount() < totalTasks;
 	}
 
+	// Freeing memories
+	delete lights;
+	delete world;
+	delete materials;
+
 	printf("Progress: 100%%\n");
 	printf("Ended in: %lf ms\n", t.ElapsedMillis());
 	
@@ -384,18 +398,20 @@ int main()
 	pixel* image = (pixel*) malloc(WIDTH * HEIGHT * sizeof(pixel));
 	emissionPixel* emission = (emissionPixel*) malloc(WIDTH * HEIGHT * sizeof(emissionPixel));
 
-	pixel         img[stepX * stepY];
-	emissionPixel em[stepX * stepY];
-	int x = 0, y = 0;
-	for(int i = 0; i < totalTasks; i += 2)
 	{
-		redis.ReceiveImage(reinterpret_cast<unsigned char*>(img), x, y, stepX, stepY, sizeof(pixel));
-		redis.ReceiveImage(reinterpret_cast<unsigned char*>(em),  x, y, stepX, stepY, sizeof(emissionPixel));
-
-		for(int j = 0; j < stepY; ++j)
+		pixel         img[stepX * stepY];
+		emissionPixel em[stepX * stepY];
+		int x = 0, y = 0;
+		for(int i = 0; i < totalTasks; i += 2)
 		{
-			memcpy(image    + x * stepX + ((y * stepY) + j) * WIDTH, img + j * stepX, stepX * sizeof(pixel));
-			memcpy(emission + x * stepX + ((y * stepY) + j) * WIDTH, em  + j * stepX, stepX * sizeof(emissionPixel));
+			redis.ReceiveImage(reinterpret_cast<unsigned char*>(img), x, y, stepX, stepY, sizeof(pixel));
+			redis.ReceiveImage(reinterpret_cast<unsigned char*>(em),  x, y, stepX, stepY, sizeof(emissionPixel));
+
+			for(int j = 0; j < stepY; ++j)
+			{
+				memcpy(image    + x * stepX + ((y * stepY) + j) * WIDTH, img + j * stepX, stepX * sizeof(pixel));
+				memcpy(emission + x * stepX + ((y * stepY) + j) * WIDTH, em  + j * stepX, stepX * sizeof(emissionPixel));
+			}
 		}
 	}
 
@@ -409,6 +425,8 @@ int main()
 	printf("Ended in: %lf ms\n", t.ElapsedMillis());
 
     writePPM("output.ppm", image, WIDTH, HEIGHT);
+
+	free(image);
 
     return 0;
 }

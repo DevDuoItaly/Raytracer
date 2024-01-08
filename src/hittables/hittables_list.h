@@ -8,6 +8,12 @@ public:
     PREFIX_DEVICE HittablesList(Hittable** hittables, uint32_t length)
         : m_Hittables(hittables), m_Length(length) {}
     
+    PREFIX_DEVICE ~HittablesList()
+    {
+        for(int i = 0; i < m_Length; ++i)
+            delete m_Hittables[i];
+    }
+
     PREFIX_DEVICE bool intersect(const Ray& ray, RayHit& hit) const
     {
         hit.distance = FLT_MAX;

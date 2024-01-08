@@ -121,7 +121,7 @@ PREFIX_DEVICE HitColorGlow TraceRay(Ray ray, Hittable** world, Light** lights, M
             if(hitInfo.emissionStrenght > 0)
             {
                 emission = glm::normalize(emission * glm::vec3(emissionStrenght) + hitInfo.emission * glm::vec3(hitInfo.emissionStrenght));
-                emissionStrenght = std::max(emissionStrenght, hitInfo.emissionStrenght * 0.95f);
+                emissionStrenght = glm::max(emissionStrenght, hitInfo.emissionStrenght * 0.95f);
             }
         }
 
@@ -175,7 +175,7 @@ PREFIX_DEVICE HitColorGlow AntiAliasing(float u, float v, float pixelOffX, float
     HitColorGlow info1 = TraceRay(ray, world, lights, materials, 1, 1, randState, maxDepth);
     result.color += info1.color / glm::vec3(maxDepth);
     result.emission += info1.emission;
-    result.emissionStrenght = std::max(result.emissionStrenght, info1.emissionStrenght);
+    result.emissionStrenght = glm::max(result.emissionStrenght, info1.emissionStrenght);
 
     maxDepth = 0;
 
@@ -183,7 +183,7 @@ PREFIX_DEVICE HitColorGlow AntiAliasing(float u, float v, float pixelOffX, float
     HitColorGlow info2 = TraceRay(ray, world, lights, materials, 1, 1, randState, maxDepth);
     result.color += info2.color / glm::vec3(maxDepth);
     result.emission += info2.emission;
-    result.emissionStrenght = std::max(result.emissionStrenght, info2.emissionStrenght);
+    result.emissionStrenght = glm::max(result.emissionStrenght, info2.emissionStrenght);
 
     maxDepth = 0;
 
@@ -191,7 +191,7 @@ PREFIX_DEVICE HitColorGlow AntiAliasing(float u, float v, float pixelOffX, float
     HitColorGlow info3 = TraceRay(ray, world, lights, materials, 1, 1, randState, maxDepth);
     result.color += info3.color / glm::vec3(maxDepth);
     result.emission += info3.emission;
-    result.emissionStrenght = std::max(result.emissionStrenght, info3.emissionStrenght);
+    result.emissionStrenght = glm::max(result.emissionStrenght, info3.emissionStrenght);
 
     result.color *= glm::vec3(0.25f);
     result.emission *= glm::vec3(0.25f);
