@@ -2,6 +2,14 @@
 
 #include "material.h"
 
+#include "lights/light.h"
+#include "lights/lightsList.h"
+#include "lights/directionalLight.h"
+
+#include "hittables/sphere.h"
+#include "hittables/hittable.h"
+#include "hittables/hittablesList.h"
+
 #include <pqxx/pqxx>
 
 class postgres
@@ -34,11 +42,11 @@ public:
 		return work.exec(ss.str().c_str())[0][0].as<bool>();
 	}
 
-	Material* getMaterials(int sceneID)
+	Material* getMaterials()
 	{
 		pqxx::nontransaction work(m_Cxn);
 
-		pqxx::result query = work.exec("SELECT FROM material");
+		pqxx::result query = work.exec("SELECT * FROM material");
 		if(query.empty())
 			return 0;
 		
@@ -46,15 +54,59 @@ public:
 		for(int i = 0; i < query.size(); ++i)
 		{
 			pqxx::row row = query[i];
-			materials[i].color         = row[1].as<glm::vec3>();
+			materials[i].color         = readVec3(row[1].c_str());
 			materials[i].roughness     = row[2].as<float>();
 			materials[i].reflection    = row[3].as<float>();
 			materials[i].refraction    = row[4].as<float>();
-			materials[i].emissionColor = row[5].as<glm::vec3>();
+			materials[i].emissionColor = readVec3(row[5].c_str());
 			materials[i].glowStrength  = row[6].as<float>();
 		}
 
 		return materials;
+	}
+
+	Light* getLights(int sceneID)
+	{
+		pqxx::nontransaction work(m_Cxn);
+
+		std::stringstream ss;
+		ss << "SELECT * FROM directional_light WHERE scene_id=" << sceneID;
+
+		pqxx::result query = work.exec(ss.str().c_str());
+		if(query.empty())
+			return 0;
+		
+		Light** l_light = new Light*[query.size()];
+		for(int i = 0; i < query.size(); ++i)
+		{
+			pqxx::row row = query[i];
+			DirectionalLight* light = new DirectionalLight(readVec3(row[1].c_str()));
+			l_light[i] = light;
+		}
+
+		return new LightsList(l_light, query.size());
+	}
+
+	Hittable* getWorld(int sceneID)
+	{
+		pqxx::nontransaction work(m_Cxn);
+
+		std::stringstream ss;
+		ss << "SELECT * FROM sphere WHERE scene_id=" << sceneID;
+
+		pqxx::result query = work.exec(ss.str().c_str());
+		if(query.empty())
+			return 0;
+		
+		Hittable** l_world = new Hittable*[query.size()];
+		for(int i = 0; i < query.size(); ++i)
+		{
+			pqxx::row row = query[i];
+			Sphere* sphere = new Sphere(readVec3(row[1].c_str()), row[2].as<float>(), row[3].as<int>());
+			l_world[i] = sphere;
+		}
+
+		return new HittablesList(l_world, query.size());
 	}
 
 private:
@@ -123,6 +175,32 @@ private:
 					(2, '(-3.0,  1.0,    -4.0)'::VEC3, 1.0,    2, 0), \
 					(3, '( 3.0,  1.0,    -4.0)'::VEC3, 1.0,    3, 0)");
 		}
+	}
+
+	glm::vec3 readVec3(const char* str)
+	{
+		std::string s(str);
+		int begin = 1, end = s.find(',');
+
+		glm::vec3 v{ 0.0f, 0.0f, 0.0f };
+
+		if(end == std::string::npos) { printf("Invalid string!\n"); return v; }
+
+		v.x = (float) std::atof(s.substr(begin, end).c_str());
+		begin = end + 1;
+		end = s.find(',', begin);
+
+		if(end == std::string::npos) { printf("Invalid string!\n"); return v; }
+
+		v.y = (float) std::atof(s.substr(begin, end).c_str());
+		begin = end + 1;
+		end = s.find(')', begin);
+
+		if(end == std::string::npos) { printf("Invalid string!\n"); return v; }
+
+		v.z = (float) std::atof(s.substr(begin, end).c_str());
+
+		return v;
 	}
 
 private:

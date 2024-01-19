@@ -1,7 +1,6 @@
 #include "renderer.h"
 
-#include "lights/directionalLight.h"
-#include "lights/lightsList.h"
+#include "lights/light.h"
 
 #include "hittables/hittablesList.h"
 #include "hittables/sphere.h"
@@ -238,46 +237,13 @@ int main()
 	Camera camera(60.0f, WIDTH, HEIGHT, 0.01f, 1000.0f);
 
     // -- Init Lights
-	uint32_t light_count = 1;
-	Light* lights;
-	{
-		Light** l_light = (Light**) malloc(light_count * sizeof(Light*));
-		l_light[0] = new DirectionalLight({ -0.25f, -0.75f, 0.45f  });
-		//l_light[1] = new DirectionalLight({  0.85f, -0.15f, 0.15f });
-		
-		lights = new LightsList(l_light, light_count);
-	}
+	Light* lights = db.getLights(0);
 
 	// Init world
-	int spawnW = 7;
-
-	uint32_t world_count = 49 + 4;
-	Hittable* world;
-	{
-		Hittable** l_world = (Hittable**) malloc(world_count * sizeof(Hittable*));
-		l_world[0] = new Sphere({  0.0f, -1000.0f, 0.0f }, 1000.0f, 0);
-		int i = 0;
-		for(; i < world_count - 4; ++i)
-		{
-			l_world[i + 1] = new Sphere({ (((int)i % spawnW) - 3) * 1.5f, 0.3f, ((int)(i / spawnW) - 3) * 1.5f }, 0.3f, (int)(0 /*RANDOM_UNIT(rnd)*/ * 3) + 4);
-		}
-		++i;
-
-		l_world[i++] = new Sphere({  0.0f, 1.0f, 0.0f }, 1.0f, 1);
-		l_world[i++] = new Sphere({ -3.0f, 1.0f, 0.0f }, 1.0f, 2);
-		l_world[i++] = new Sphere({  3.0f, 1.0f, 0.0f }, 1.0f, 3);
-
-		// l_world[1] = new Sphere({  0.0f,  0.0f,   -4.0f }, 0.5f,   1);
-		// l_world[2] = new Sphere({ -1.5f,  0.5f,   -4.0f }, 1.0f,   2);
-		// l_world[3] = new Sphere({  1.5f,  0.5f,   -4.0f }, 1.0f,   3);
-		// l_world[4] = new Sphere({  1.5f,  1.0f,   -4.0f }, 0.5f,   4);
-		// l_world[4] = new Plane ({  0.0f,  -5.0f, 5.0f }, { 0.0f,  -1.0f, 0.0f }, 3);
-		
-		world = new HittablesList(l_world, world_count);
-	}
+	Hittable* world = db.getWorld(0);
 
     // -- Init Materials
-    Material* materials = db.getMaterials(0);
+    Material* materials = db.getMaterials();
 
 	// Raytrace
 	ThreadPool pool(std::thread::hardware_concurrency() - 1);
