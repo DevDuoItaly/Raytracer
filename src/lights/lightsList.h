@@ -13,7 +13,7 @@ public:
         for(int i = 0; i < m_Length; ++i)
             delete m_Lights[i];
     }
-
+    
     PREFIX_DEVICE virtual bool IsInLight(Hittable** world, const glm::vec3& position) const
     {
         return false;

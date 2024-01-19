@@ -1,10 +1,10 @@
 #define GPU_RUNNER 1
 #include "renderer.h"
 
-#include "lights/directional_light.h"
-#include "lights/lights_list.h"
+#include "lights/directionalLight.h"
+#include "lights/lightsList.h"
 
-#include "hittables/hittables_list.h"
+#include "hittables/hittablesList.h"
 #include "hittables/sphere.h"
 #include "hittables/cube.h"
 #include "hittables/plane.h"

@@ -15,7 +15,7 @@
     #define PREFIX_HOST
     #define PREFIX
 
-    #include "cudarand.h"
+    #include "rand.h"
 
     #define RANDOM_UNIT(randState) randState->randomUnit()
 #endif

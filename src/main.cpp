@@ -1,23 +1,22 @@
 #include "renderer.h"
 
-#include "lights/directional_light.h"
-#include "lights/lights_list.h"
+#include "lights/directionalLight.h"
+#include "lights/lightsList.h"
 
-#include "hittables/hittables_list.h"
+#include "hittables/hittablesList.h"
 #include "hittables/sphere.h"
 #include "hittables/cube.h"
 #include "hittables/plane.h"
 
 #include "redis.h"
+#include "postgres.h"
 
 #include "utils/timer.h"
-#include "utils/thread_pool.h"
+#include "utils/threadPool.h"
 
 #include <vector>
 #include <algorithm>
 #include <execution>
-
-#include <pqxx/pqxx>
 
 #define WIDTH 1024
 #define HEIGHT 512
@@ -232,53 +231,8 @@ void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
 
 int main()
 {
-	pqxx::connection C("dbname=imagedb user=root password=password hostaddr=127.0.0.1 port=5432");
-	if (!C.is_open())
-	{
-		std::cerr << "Cannot connect to postgres!" << std::endl;
-		return 0;
-	}
-
-	std::cout << "Postgres connected to " << C.dbname() << "!" << std::endl;
-
-	pqxx::nontransaction w(C);
-
-	// Init Databse
-	pqxx::result vec3_exist = w.exec("SELECT 1 FROM pg_type WHERE typname = 'vec3'");
-
-	// If the type doesn't exist then create it
-	if(vec3_exist[0].empty())
-		w.exec("CREATE TYPE VEC3 AS ( \
-					x REAL, \
-					y REAL, \
-					z REAL  \
-				);");
-	
-	w.exec("CREATE TABLE IF NOT EXISTS scene ( \
-				id   INT         PRIMARY KEY NOT NULL, \
-				name VARCHAR(25)             NOT NULL  \
-			);");
-	w.exec("CREATE TABLE IF NOT EXISTS directional_light ( \
-				id        INT  PRIMARY KEY NOT NULL, \
-				direction VEC3             NOT NULL, \
-				scene_id  INT  REFERENCE scene(id)   \
-			);");
-	w.exec("CREATE TABLE IF NOT EXISTS material ( \
-				id             INT  PRIMARY KEY  NOT NULL, \
-				color          VEC3              NOT NULL, \
-    			roughness      REAL              NOT NULL, \
-				reflection     REAL              NOT NULL, \
-				refraction     REAL              NOT NULL, \
-    			emission_color VEC3              NOT NULL, \
-    			glow_strength  REAL              NOT NULL  \
-			);");
-	w.exec("CREATE TABLE IF NOT EXISTS sphere ( \
-				position    VEC3 NOT NULL,              \
-    			radius      REAL NOT NULL,              \
-    			material_id INT  REFERENCE material(id) \
-			);");
-
-	C.disconnect();
+	// Init Postgres
+	postgres db;
 
 	// Setup world
 	Camera camera(60.0f, WIDTH, HEIGHT, 0.01f, 1000.0f);
@@ -323,20 +277,7 @@ int main()
 	}
 
     // -- Init Materials
-    Material* materials = new Material[7];
-	{
-		materials[0] = Material{ glm::vec3{ 0.8f, 0.8f, 0.0f }, 0.0f,  0.0f,  0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
-		materials[1] = Material{ glm::vec3{ 0.0f, 0.0f, 0.0f }, 0.0f,  0.0f,  1.85f, { 0.0f, 0.0f, 0.0f }, 0.0f };
-		materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.8f,  0.75f, 0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
-		materials[3] = Material{ glm::vec3{ 0.8f, 0.2f, 0.1f }, 0.05f, 0.0f,  0.0f,  { 0.7f, 0.1f, 0.2f }, 4.5f };
-		materials[4] = Material{ glm::vec3{ 0.1f, 0.7f, 0.2f }, 0.08f, 0.02f, 0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
-		materials[5] = Material{ glm::vec3{ 0.1f, 0.2f, 0.7f }, 0.08f, 0.02f, 0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
-		materials[6] = Material{ glm::vec3{ 0.1f, 0.2f, 0.7f }, 0.1f,  0.05f, 0.0f,  { 0.0f, 0.0f, 0.0f }, 0.0f };
-		// materials[1] = Material{ glm::vec3{ 0.7f, 0.3f, 0.3f }, 0.9f,  0.08f, 0.0f  };
-		// materials[2] = Material{ glm::vec3{ 0.8f, 0.8f, 0.8f }, 0.3f,  0.25f, 0.0f  };
-		// materials[3] = Material{ glm::vec3{ 0.0f, 0.0f, 0.0f }, 0.05f, 0.0f,  1.85f };
-		// materials[4] = Material{ glm::vec3{ 0.1f, 0.8f, 0.2f }, 0.1f,  0.09f, 0.0f  };
-	}
+    Material* materials = db.getMaterials(0);
 
 	// Raytrace
 	ThreadPool pool(std::thread::hardware_concurrency() - 1);
