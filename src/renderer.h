@@ -17,7 +17,7 @@ PREFIX_DEVICE bool debug = false;
 
 #include <cstdio>
 
-#define MAX_DEPTH 5
+#define MAX_DEPTH 20
 
 PREFIX_DEVICE inline void UVToDirection(float u, float v, const glm::mat4& invProj, const glm::mat4& invView, glm::vec3& direction)
 {

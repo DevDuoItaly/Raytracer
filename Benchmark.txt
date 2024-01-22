@@ -1,0 +1,60 @@
+i5-10600K 4.10GHz - 11 Threads
+
+// Constants //
+Max Depth: 20
+Tile:      16x16
+
+// Tests //
+Size:      256x128
+Sample:    5
+Rendering: 168 ms
+Recompose: 14  ms
+Glow:      220 ms
+
+Size:      256x128
+Sample:    10
+Rendering: 258 ms
+Recompose: 14  ms
+Glow:      220 ms
+
+Size:      256x128
+Sample:    15
+Rendering: 367 ms
+Recompose: 14  ms
+Glow:      220 ms
+
+Size:      512x256
+Sample:    5
+Rendering: 607 ms
+Recompose: 54  ms
+Glow:      855 ms
+
+Size:      512x256
+Sample:    10
+Rendering: 989 ms
+Recompose: 54  ms
+Glow:      855 ms
+
+Size:      512x256
+Sample:    15
+Rendering: 1369 ms
+Recompose: 54   ms
+Glow:      855  ms
+
+Size:      1024x512
+Sample:    5
+Rendering: 2453 ms
+Recompose: 226  ms
+Glow:      3462 ms
+
+Size:      1024x512
+Sample:    10
+Rendering: 3801 ms
+Recompose: 226  ms
+Glow:      3462 ms
+
+Size:      1024x512
+Sample:    15
+Rendering: 5317 ms
+Recompose: 226  ms
+Glow:      3462 ms

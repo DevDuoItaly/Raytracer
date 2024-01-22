@@ -1,0 +1,23 @@
+i5-10600K 4.10GHz
+
+// Constants //
+Size:      512x256
+Samples:   10
+Max Depth: 20
+Tile:      16x16
+
+// Tests //
+Threads:   2
+Rendering: 2921 ms
+
+Threads:   4
+Rendering: 1617 ms
+
+Threads:   6
+Rendering: 1280 ms
+
+Threads:   8
+Rendering: 1110 ms
+
+Threads:   10
+Rendering: 1020 ms

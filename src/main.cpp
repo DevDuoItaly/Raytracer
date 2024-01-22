@@ -20,7 +20,7 @@
 #define WIDTH 1024
 #define HEIGHT 512
 
-#define SAMPLES 5
+#define SAMPLES 10
 
 #define MAXBLUR 5
 
@@ -253,8 +253,8 @@ int main()
 
 	int prevElapsed = -1;
 
-	int splitH = 64, splitV = 32;
-	int stepX = WIDTH / splitH, stepY = HEIGHT / splitV;
+	int tileSize = 16;
+	int splitH = WIDTH / tileSize, splitV = HEIGHT / tileSize;
 
 	float totalTasks = splitH * splitV * 2;
 
@@ -267,16 +267,16 @@ int main()
 	{
 		for(int sX = 0; sX < splitH; ++sX)
 		{
-			pool.enqueue([&redis, &lock, &camera, &world, &lights, &materials, sX, sY, &stepX, &stepY]()
+			pool.enqueue([&redis, &lock, &camera, &world, &lights, &materials, sX, sY, &tileSize]()
 			{
 				// Setup local images
-				pixel* image = new pixel[stepX * stepY];
-				emissionPixel* emission = new emissionPixel[stepX * stepY];
+				pixel* image = new pixel[tileSize * tileSize];
+				emissionPixel* emission = new emissionPixel[tileSize * tileSize];
 
-				for(int nY = 0; nY < stepY; ++nY)
-					for(int nX = 0; nX < stepX; ++nX)
+				for(int nY = 0; nY < tileSize; ++nY)
+					for(int nX = 0; nX < tileSize; ++nX)
 					{
-						int x = nX + sX * stepX, y = nY + sY * stepY;
+						int x = nX + sX * tileSize, y = nY + sY * tileSize;
 
 						// -1 / 1
 						float u = ((float)x / (float)WIDTH ) * 2.0f - 1.0f;
@@ -296,14 +296,14 @@ int main()
 							result.emissionStrenght += sample.emissionStrenght;
 						}
 
-						image   [nX + nY * stepX].Set(result.color    / glm::vec3(SAMPLES));
-						emission[nX + nY * stepY].Set(result.emission / glm::vec3(SAMPLES), result.emissionStrenght / SAMPLES);
+						image   [nX + nY * tileSize].Set(result.color    / glm::vec3(SAMPLES));
+						emission[nX + nY * tileSize].Set(result.emission / glm::vec3(SAMPLES), result.emissionStrenght / SAMPLES);
 					}
 				
 				std::lock_guard<std::mutex> l(lock);
 
-				redis.SendImage(reinterpret_cast<unsigned char*>(image),    sX, sY, stepX, stepY, sizeof(pixel));
-				redis.SendImage(reinterpret_cast<unsigned char*>(emission), sX, sY, stepX, stepY, sizeof(emissionPixel));
+				redis.SendImage(reinterpret_cast<unsigned char*>(image),    sX, sY, tileSize, tileSize, sizeof(pixel));
+				redis.SendImage(reinterpret_cast<unsigned char*>(emission), sX, sY, tileSize, tileSize, sizeof(emissionPixel));
 
 				delete image;
 				delete emission;
@@ -345,7 +345,6 @@ int main()
 	delete world;
 	delete materials;
 
-	printf("Progress: 100%%\n");
 	printf("Ended in: %lf ms\n", t.ElapsedMillis());
 	
 	printf("Recomposing image!\n");
@@ -356,18 +355,18 @@ int main()
 	emissionPixel* emission = (emissionPixel*) malloc(WIDTH * HEIGHT * sizeof(emissionPixel));
 
 	{
-		pixel         img[stepX * stepY];
-		emissionPixel em[stepX * stepY];
+		pixel         img[tileSize * tileSize];
+		emissionPixel em [tileSize * tileSize];
 		int x = 0, y = 0;
 		for(int i = 0; i < totalTasks; i += 2)
 		{
-			redis.ReceiveImage(reinterpret_cast<unsigned char*>(img), x, y, stepX, stepY, sizeof(pixel));
-			redis.ReceiveImage(reinterpret_cast<unsigned char*>(em),  x, y, stepX, stepY, sizeof(emissionPixel));
+			redis.ReceiveImage(reinterpret_cast<unsigned char*>(img), x, y, tileSize, tileSize, sizeof(pixel));
+			redis.ReceiveImage(reinterpret_cast<unsigned char*>(em),  x, y, tileSize, tileSize, sizeof(emissionPixel));
 
-			for(int j = 0; j < stepY; ++j)
+			for(int j = 0; j < tileSize; ++j)
 			{
-				memcpy(image    + x * stepX + ((y * stepY) + j) * WIDTH, img + j * stepX, stepX * sizeof(pixel));
-				memcpy(emission + x * stepX + ((y * stepY) + j) * WIDTH, em  + j * stepX, stepX * sizeof(emissionPixel));
+				memcpy(image    + x * tileSize + ((y * tileSize) + j) * WIDTH, img + j * tileSize, tileSize * sizeof(pixel));
+				memcpy(emission + x * tileSize + ((y * tileSize) + j) * WIDTH, em  + j * tileSize, tileSize * sizeof(emissionPixel));
 			}
 		}
 	}
