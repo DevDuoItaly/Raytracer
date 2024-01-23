@@ -1,8 +1,40 @@
-Cirelli Samuele, Fiorelli Federico
 
-date: 22/01/2024
+# Rendering con Raytracing
 
-Rendering con Raytracing
+## Librerie utilizzate
+### Redis
+Installazione libreria:
+```bash
+sudo apt install redis-server
+```
+---
+### PostgreSQL
+Installazione libreria:
+```bash
+sudo apt install postgresql
+```
+Librerie kernel:
+```bash
+sudo apt install libpqxx-6.4
+sudo apt install libpqxx-dev
+```
+Setup postgre:
+```bash
+sh ./initdb.sh
+```
+---
+### CUDA
+Installazione libreria:
+[Download](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html)
+
+---
+## Build and run for CPU
+1. Clone repo
+2. run `sudo sh ./run_cpu.sh`
+
+## Build and run for GPU
+1. Clone repo
+2. run `sudo sh ./run_cuda.sh`
 
 # Introduzione
 
@@ -569,20 +601,18 @@ dell'immagine e il numero di samples per pixel. Il Max Depth è stato
 impostato a 20 e la dimensione dei tile a 16x16px. Di seguito sono
 riportati i risultati:
 
-::: center
-::: adjustbox
-width=0.85,center
-![image](chart benchmark cpu renderer.png){width="0.85\\paperwidth"}
-:::
-:::
+<p align="center">
+<img src="https://github.com/DevDuoItaly/Raytracer/assets/77865732/c6b835a8-63b1-481c-acfa-67cae682c695">
+</p>
 
 La tabella seguente mostra i tempi di rendering (in millisecondi) per
 diverse combinazioni di Size e Samples. I risultati sono suddivisi nelle
 fasi di Rendering, Ricomposizione dell'immagine (Recompose) e
 Applicazione dell'effetto di Glow:
 
-::: center
-:::
+<p align="center">
+<img src="https://github.com/DevDuoItaly/Raytracer/assets/77865732/7f8cbd87-27bd-40d9-bdff-58d4f978c2fe">
+</p>
 
 ### Benchmark al variare dei Threads
 
@@ -591,18 +621,16 @@ prestazioni di rendering. Per questi test, abbiamo fissato la dimensione
 dell'immagine a 512x256px, il numero di samples per pixel a 10, il Max
 Depth a 20 e la dimensione dei tile a 16x16px.
 
-::: center
-::: adjustbox
-width=0.85,center
-![image](chart benchmark cpu renderer threads.png){width="0.85\\paperwidth"}
-:::
-:::
+<p align="center">
+<img src="https://github.com/DevDuoItaly/Raytracer/assets/77865732/4674ab96-0a7c-47b7-bcfe-8295f8b0c104">
+</p>
 
 La tabella seguente riassume i tempi di rendering (in millisecondi) al
 variare del numero di threads:
 
-::: center
-:::
+<p align="center">
+<img src="https://github.com/DevDuoItaly/Raytracer/assets/77865732/5eb48276-112d-4cad-934e-3e229e69a247">
+</p>
 
 ### Considerazioni sulla Legge di Amdahl
 
@@ -634,13 +662,10 @@ thread ha portato a un miglioramento delle prestazioni che tende a
 stabilizzarsi piuttosto che aumentare proporzionalmente.
 
 # Riferimenti
-
-::: thebibliography
-99 Peter Shirley, *Ray Tracing in One Weekend*,
+- Peter Shirley, *Ray Tracing in One Weekend*,
 <https://raytracing.github.io/books/RayTracingInOneWeekend.html>
 
-Roger Allen, *Accelerated Ray Tracing in One Weekend in CUDA*,
+- Roger Allen, *Accelerated Ray Tracing in One Weekend in CUDA*,
 <https://developer.nvidia.com/blog/accelerated-ray-tracing-cuda/>
 
-*OpenGL Camera*, <https://learnopengl.com/Getting-started/Camera>
-:::
+- *OpenGL Camera*, <https://learnopengl.com/Getting-started/Camera>
