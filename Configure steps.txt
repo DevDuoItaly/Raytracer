@@ -1,0 +1,14 @@
+// Install Redis //
+sudo apt install redis-server
+
+
+// Install Postgre //
+sudo apt install postgresql
+
+//-- Install Kernel postgre lib
+sudo apt install libpqxx-6.4
+sudo apt install libpqxx-dev
+
+
+// Setup postgre
+run sh file "initdb.sh"
