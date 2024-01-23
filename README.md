@@ -1,7 +1,8 @@
 Cirelli Samuele, Fiorelli Federico
 
 date: 22/01/2024
-title: Rendering con Raytracing
+
+Rendering con Raytracing
 
 # Introduzione
 
