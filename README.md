@@ -1,9 +1,7 @@
----
-author:
-- Cirelli Samuele, Fiorelli Federico
-date: 1970-01-01
+Cirelli Samuele, Fiorelli Federico
+
+date: 22/01/2024
 title: Rendering con Raytracing
----
 
 # Introduzione
 
