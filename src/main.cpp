@@ -31,6 +31,7 @@ emissionPixel* downsample(emissionPixel* emission, int width, int height, int sc
 {
 	int startWidth = width;
 
+	// Calculate new scaled image sizes and create the new image
 	width  /= scaleFactor;
 	height /= scaleFactor;
 
@@ -48,6 +49,7 @@ emissionPixel* downsample(emissionPixel* emission, int width, int height, int sc
 
 			int emissionsCount = 0;
 
+			// Calculate the average emission value
 			for (int nY = 0; nY < scaleFactor; ++nY)
 				for (int nX = 0; nX < scaleFactor; ++nX)
 				{
@@ -72,39 +74,34 @@ emissionPixel* downsample(emissionPixel* emission, int width, int height, int sc
 
 emissionPixel* upscale(emissionPixel* emission, int width, int height, int scaleFactor)
 {
+	// Calculate new scaled image sizes and create the new image
 	int scaledW = width * scaleFactor;
 	emissionPixel* result = new emissionPixel[scaledW * height * scaleFactor];
 
 	for (int y = 0; y < height; ++y)
-	{
 		for (int x = 0; x < width; ++x)
 		{
 			emissionPixel& p = emission[x + y * width];
 
+			// Diffuses the pixel value for the tile in the scaled image
 			for (int nY = 0; nY < scaleFactor; ++nY)
 				for (int nX = 0; nX < scaleFactor; ++nX)
-				{
 					result[(x * scaleFactor + nX) + ((y * scaleFactor + nY) * scaledW)].Set(p.emission, p.strenght);
-				}
 		}
-	}
 
 	return result;
 }
 
 void gaussianBlur(emissionPixel* emission, int width, int height, float sigma, int size) 
 {
-    if (size < 1)
-	{
-        std::cerr << "La dimensione del kernel deve essere dispari e maggiore di 1." << std::endl;
-        return;
-    }
+	assert(size > 0);
 
+	// Create the kernel values for the blur
     float kernel[size * 2 + 1][size * 2 + 1];
 	{
 		float sum = 0.0f;
 
-		// calcolo valori del kernel
+		// Calculate exponential value
 		for (int y = -size; y <= size; ++y)
 			for (int x = -size; x <= size; ++x)
 			{
@@ -115,13 +112,13 @@ void gaussianBlur(emissionPixel* emission, int width, int height, float sigma, i
 		
 		sum = 1.0f / sum;
 		
-		// normalizzo il kernel
+		// Normalize the values
 		for (int y = 0; y < size * 2 + 1; ++y)
 			for (int x = 0; x < size * 2 + 1; ++x)
 				kernel[x][y] *= sum;
 	}
 
-	// Copia l'immagine originale
+	// Copy the original image in a new one
     emissionPixel* tempEmission = (emissionPixel*) malloc(width * height * sizeof(emissionPixel));
     memcpy(tempEmission, emission, width * height * sizeof(emissionPixel));
 
@@ -132,6 +129,7 @@ void gaussianBlur(emissionPixel* emission, int width, int height, float sigma, i
 
 			int emissionsCount = 0;
 
+			// For each pixel in the kernel box add the weighted values
 			for (int kX = -size; kX <= size; kX++)
 				for (int kY = -size; kY <= size; kY++)
 				{
@@ -155,7 +153,7 @@ void gaussianBlur(emissionPixel* emission, int width, int height, float sigma, i
 			tempEmission[x + y * width].Set(pixel.emission, pixel.strenght);
         }
 
-    // Copiare i pixel sfocati nell'immagine originale
+    // Copy the blurred pixel in the original image
     memcpy(emission, tempEmission, width * height * sizeof(emissionPixel));
     free(tempEmission);
 }
@@ -189,7 +187,7 @@ void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
 
 		// writePPM("output_upscale.ppm", upscaled, startW, startH);
 
-		// Add upscaled image with base image
+		// Combine upscaled image with base image
 		for(int y = 0; y < startH; ++y)
 			for(int x = 0; x < startW; ++x)
 			{
@@ -269,7 +267,7 @@ int main()
 		{
 			pool.enqueue([&redis, &lock, &camera, &world, &lights, &materials, sX, sY, &tileSize]()
 			{
-				// Setup local images
+				// Setup local tile
 				pixel* image = new pixel[tileSize * tileSize];
 				emissionPixel* emission = new emissionPixel[tileSize * tileSize];
 
@@ -302,6 +300,7 @@ int main()
 				
 				std::lock_guard<std::mutex> l(lock);
 
+				// Upload tile to redis
 				redis.SendImage(reinterpret_cast<unsigned char*>(image),    sX, sY, tileSize, tileSize, sizeof(pixel));
 				redis.SendImage(reinterpret_cast<unsigned char*>(emission), sX, sY, tileSize, tileSize, sizeof(emissionPixel));
 
@@ -323,6 +322,7 @@ int main()
 	t.Reset();
 	bool waiting = true;
 
+	// Waiting all tasks ended
 	while(waiting)
 	{
 		int elapsed = (int)(t.ElapsedMillis() * 0.001f);
@@ -360,9 +360,11 @@ int main()
 		int x = 0, y = 0;
 		for(int i = 0; i < totalTasks; i += 2)
 		{
+			// Retrieve tile
 			redis.ReceiveImage(reinterpret_cast<unsigned char*>(img), x, y, tileSize, tileSize, sizeof(pixel));
 			redis.ReceiveImage(reinterpret_cast<unsigned char*>(em),  x, y, tileSize, tileSize, sizeof(emissionPixel));
 
+			// Copy tile into final image
 			for(int j = 0; j < tileSize; ++j)
 			{
 				memcpy(image    + x * tileSize + ((y * tileSize) + j) * WIDTH, img + j * tileSize, tileSize * sizeof(pixel));
@@ -370,7 +372,7 @@ int main()
 			}
 		}
 	}
-
+	
 	printf("Ended in: %lf ms\n", t.ElapsedMillis());
 
 	printf("Appling glow!\n");

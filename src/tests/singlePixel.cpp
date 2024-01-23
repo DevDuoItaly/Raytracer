@@ -1,9 +1,9 @@
 #include "renderer.h"
 
-#include "lights/directional_light.h"
-#include "lights/lights_list.h"
+#include "lights/directionalLight.h"
+#include "lights/lightsList.h"
 
-#include "hittables/hittables_list.h"
+#include "hittables/hittablesList.h"
 #include "hittables/sphere.h"
 
 int main()
@@ -49,7 +49,7 @@ int main()
 	assert(result.color.y == 0.658249199f);
 	assert(result.color.z == 0.0f);
 
-	printf("All good!");
+	printf("All good!\n");
 
     return 0;
 }

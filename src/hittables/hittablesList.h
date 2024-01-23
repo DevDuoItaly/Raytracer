@@ -21,6 +21,7 @@ public:
         RayHit currHit;
         bool hasHit = false;
 
+        // For each hittable in the list try intersect and compare distance
         for(int i = 0; i < m_Length; ++i)
         {
             if(!m_Hittables[i]->intersect(ray, currHit) || currHit.distance >= hit.distance)
@@ -31,12 +32,15 @@ public:
             hasHit = true;
         }
 
+        // Return the nearest hittable
         return hasHit;
     }
 
     PREFIX_DEVICE virtual bool hasIntersect(const Ray& ray) const
     {
         RayHit hit;
+
+        // Returns True to the first intersection found
         for(int i = 0; i < m_Length; ++i)
         {
             if(m_Hittables[i]->intersect(ray, hit))

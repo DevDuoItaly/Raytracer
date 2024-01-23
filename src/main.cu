@@ -17,12 +17,16 @@
 #include <iostream>
 #include <string>
 
-#define WIDTH 1920
-#define HEIGHT 1080
+#define WIDTH 1024
+#define HEIGHT 512
 
 #define SAMPLES 5
 
 #define CUDA(f) { cudaError_t err = f;\
+    if(err != cudaSuccess)\
+        printf("Cuda Error: %s\n", cudaGetErrorString(err)); }
+
+#define CUDA_LASTERROR() { cudaError_t err = cudaGetLastError();\
     if(err != cudaSuccess)\
         printf("Cuda Error: %s\n", cudaGetErrorString(err)); }
 
@@ -125,21 +129,15 @@ __global__ void downsample(emissionPixel* emission, emissionPixel* tempEmission,
     tempEmission[index].Set(color * percStepV, strenght);
 }
 
-__global__ void upscale(emissionPixel* emission, emissionPixel* tempEmission, int width, int downScaleW, int downScaleH, int scaleFactor)
+__global__ void upscale(emissionPixel* emission, emissionPixel* tempEmission, int width, int height, int scaleFactor)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
 
-    if (x >= downScaleW || y >= downScaleH)
+    if (x >= width || y >= height)
         return;
-
-	emissionPixel& p = emission[x + y * width];
-
-    for (int nY = 0; nY < scaleFactor; ++nY)
-        for (int nX = 0; nX < scaleFactor; ++nX)
-        {
-            tempEmission[(x * scaleFactor + nX) + ((y * scaleFactor + nY) * width)].Set(p.emission, p.strenght);
-        }
+    
+    tempEmission[x + y * width].Set(emission[(int)(x / scaleFactor) + (int)(y / scaleFactor) * width]);
 }
 
 __global__ void addImages(pixel* image, emissionPixel* emission, int width, int height)
@@ -232,16 +230,53 @@ __global__ void gaussianBlur(emissionPixel* emission, emissionPixel* tempEmissio
     emission[x + y * width].Set(pixel.emission, pixel.strenght);
 }
 
+/*
+__global__ void gaussianBlur(emissionPixel* emission, emissionPixel* tempEmission, float* kernel, int width, int height, int downScaleW, int downScaleH, int size)
+{
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+    int y = threadIdx.y + blockIdx.y * blockDim.y;
+
+    if (x >= downScaleW || y >= downScaleH)
+        return;
+    
+    emissionPixel pixel{ { 0.0f, 0.0f, 0.0f }, 0.0f };
+
+    int emissionsCount = 0;
+
+    int radius = size * 2 + 1;
+
+    for (int kY = -size; kY <= size; ++kY)
+        for (int kX = -size; kX <= size; ++kX)
+        {
+            int newX = glm::min(glm::max(x + kX, 0), width  - 1);
+            int newY = glm::min(glm::max(y + kY, 0), height - 1);
+
+            float k = kernel[(kX + size) + (kY + size) * radius];
+            emissionPixel& p = tempEmission[newX + newY * width];
+            pixel.emission += p.emission * glm::vec3(k);
+
+            if(p.strenght > 0)
+            {
+                ++emissionsCount;
+                pixel.strenght += p.strenght;
+            }
+        }
+    
+    if(emissionsCount > 0)
+        pixel.strenght /= emissionsCount;
+    
+    emission[x + y * width].Set(pixel.emission, pixel.strenght);
+}
+*/
+
 void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
 {
 	int scaleFactor = 2, scale = scaleFactor;
 
 	int kernelSigma = 1000.0f, kernelSize = 8;
 
-	int startW = width, startH = height;
-
     dim3 BlockSize(16, 16, 1);
-	dim3 GridSize((WIDTH + 15) / 16, (HEIGHT + 15) / 16, 1);
+	dim3 GridSize((WIDTH + BlockSize.x - 1) / BlockSize.x, (HEIGHT + BlockSize.y - 1) / BlockSize.y, 1);
 
     // Allocate Temp Emission Texture Memory
 	emissionPixel* d_tempEmission;
@@ -251,8 +286,8 @@ void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
 	CUDA(cudaMalloc((void**)&d_kernel, (kernelSize * 2 + 1) * sizeof(float)))
 
 
-    // int totalEmissionBytes = width * height * sizeof(emissionPixel);
-    // emissionPixel* h_tempEmission = (emissionPixel*) malloc(totalEmissionBytes);
+    int totalEmissionBytes = width * height * sizeof(emissionPixel);
+    emissionPixel* h_tempEmission = (emissionPixel*) malloc(totalEmissionBytes);
 
     // int totalBytes = width * height * sizeof(pixel);
     // pixel* h_tempImage = (pixel*) malloc(totalBytes);
@@ -264,36 +299,36 @@ void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
 		// Downscale framebuffer
         glm::vec3 percStepV(1.0f / (scale * scale));
 
-        dim3 DownGridSize((downScaleW + 15) / 16, (downScaleH + 15) / 16, 1);
+        dim3 DownGridSize((downScaleW + BlockSize.x - 1) / BlockSize.x, (downScaleH + BlockSize.y - 1) / BlockSize.y, 1);
 		downsample<<<DownGridSize, BlockSize>>>(emission, d_tempEmission, width, downScaleW, downScaleH, scaleFactor, percStepV);
 
         // CUDA(cudaMemcpy(h_tempEmission, d_tempEmission, totalEmissionBytes, cudaMemcpyDeviceToHost))
-		// writePPM("output_downscale.ppm", h_tempEmission, startW, startH);
+		// writePPM("output_downscale.ppm", h_tempEmission, width, height);
 
 		// Blur downscaled image
         createKernel<<<1, 1>>>(d_kernel, kernelSigma, kernelSize);
 		gaussianBlur<<<DownGridSize, BlockSize>>>(emission, d_tempEmission, d_kernel, width, height, downScaleW, downScaleH, kernelSize);
 
         // CUDA(cudaMemcpy(h_tempEmission, emission, totalEmissionBytes, cudaMemcpyDeviceToHost))
-		// writePPM("output_blur.ppm", h_tempEmission, startW, startH);
-		
+		// writePPM("output_blur.ppm", h_tempEmission, width, height);
+
 		// Upscale blurred image
-		upscale<<<DownGridSize, BlockSize>>>(emission, d_tempEmission, startW, downScaleW, downScaleH, scale);
+        upscale<<<GridSize, BlockSize>>>(emission, d_tempEmission, width, height, scale);
 
         // CUDA(cudaMemcpy(h_tempEmission, d_tempEmission, totalEmissionBytes, cudaMemcpyDeviceToHost))
-		// writePPM("output_upscale.ppm", h_tempEmission, startW, startH);
+		// writePPM("output_upscale.ppm", h_tempEmission, width, height);
 
 		// Add upscaled image with base image
-        addImages<<<GridSize, BlockSize>>>(image, d_tempEmission, startW, startH);
+        addImages<<<GridSize, BlockSize>>>(image, d_tempEmission, width, height);
 
         // CUDA(cudaMemcpy(h_tempImage, image, totalBytes, cudaMemcpyDeviceToHost))
-		// writePPM("output_add.ppm", h_tempImage, startW, startH);
+		// writePPM("output_add.ppm", h_tempImage, width, height);
 
 		// Filter downscaled image
-        filterEmission<<<DownGridSize, BlockSize>>>(emission, startW, startH);
+        filterEmission<<<DownGridSize, BlockSize>>>(emission, width, height);
 
         // CUDA(cudaMemcpy(h_tempEmission, emission, totalEmissionBytes, cudaMemcpyDeviceToHost))
-		// writePPM("output_filter.ppm", h_tempEmission, startW, startH);
+		// writePPM("output_filter.ppm", h_tempEmission, width, height);
 
 		// Continue applying emission
         scale *= 2;
@@ -308,7 +343,8 @@ void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
 
 int main(int argc, char **argv) 
 {
-    cudaDeviceSetLimit(cudaLimitStackSize, 65536);
+    // Set max stack frame size for each thread
+    cudaDeviceSetLimit(cudaLimitStackSize, 10240);
 
     // Allocate Texture Memory
 	int totalImageBytes = WIDTH * HEIGHT * sizeof(pixel);
@@ -369,12 +405,14 @@ int main(int argc, char **argv)
     
     // Raytrace
 	dim3 BlockSize(16, 16, 1);
-	dim3 GridSize((WIDTH + 15) / 16, (HEIGHT + 15) / 16, 1);
+	dim3 GridSize((WIDTH + BlockSize.x - 1) / BlockSize.x, (HEIGHT + BlockSize.y - 1) / BlockSize.y, 1);
 
     Timer t;
 
     printf("Kernel size: %d %d %d (%d %d %d)\n", GridSize.x, GridSize.y, GridSize.z, BlockSize.x, BlockSize.y, BlockSize.z);
 	kernel<<<GridSize, BlockSize>>>(d_image, d_emission, WIDTH, HEIGHT, d_camera, d_world, d_lights, d_materials);
+
+    CUDA_LASTERROR()
 
     CUDA(cudaDeviceSynchronize())
 

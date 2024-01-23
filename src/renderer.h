@@ -19,12 +19,14 @@ PREFIX_DEVICE bool debug = false;
 
 #define MAX_DEPTH 20
 
+// Function to convert UV coordinates to a direction vector in world space.
 PREFIX_DEVICE inline void UVToDirection(float u, float v, const glm::mat4& invProj, const glm::mat4& invView, glm::vec3& direction)
 {
-    glm::vec4 target = invProj * glm::vec4(u, v, 1.0f, 1.0f); // Clip Space
-    direction = glm::vec3(invView * glm::vec4(glm::normalize(glm::vec3(target) / target.w), 0.0f)); // World space
+    glm::vec4 target = invProj * glm::vec4(u, v, 1.0f, 1.0f);
+    direction = glm::vec3(invView * glm::vec4(glm::normalize(glm::vec3(target) / target.w), 0.0f));
 }
 
+// Function to trace a ray through the scene and compute color and glow at the hit point.
 PREFIX_DEVICE HitColorGlow TraceRay(Ray ray, Hittable** world, Light** lights, Material* materials, float multiplier, int depth, curandState* randState, int& maxDepth)
 {
     if(multiplier < 0.001f)
@@ -134,6 +136,7 @@ PREFIX_DEVICE HitColorGlow TraceRay(Ray ray, Hittable** world, Light** lights, M
     return HitColorGlow{ color, emission, emissionStrenght };
 }
 
+// Function for anti-aliasing via supersampling at sub-pixel levels.
 PREFIX_DEVICE HitColorGlow AntiAliasing(float u, float v, float pixelOffX, float pixelOffY, Camera* camera, Hittable** world, Light** lights, Material* materials, curandState* randState)
 {
     v = -v;

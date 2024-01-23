@@ -4,6 +4,7 @@
 
 #include "glm/glm.hpp"
 
+// Structure representing a basic pixel with RGB color channels
 struct pixel
 {
     unsigned char x = 0, y = 0, z = 0;
@@ -23,10 +24,17 @@ struct pixel
     }
 };
 
+// Structure representing a pixel with the emission color and strength
 struct emissionPixel
 {
     glm::vec3 emission{ 0.0f, 0.0f, 0.0f };
     float strenght = 0.0f;
+    
+    PREFIX void Set(const emissionPixel& o)
+    {
+        emission = o.emission;
+        strenght = o.strenght;
+    }
 
     PREFIX void Set(const glm::vec3& e, float s)
     {
@@ -35,12 +43,14 @@ struct emissionPixel
     }
 };
 
+// Structure representing a base ray with origin and direction
 struct Ray
 {
     glm::vec3 origin   { 0.0f, 0.0f,  0.0f };
     glm::vec3 direction{ 0.0f, 0.0f, -1.0f };
 };
 
+// Structure representing the result of a ray hit
 struct RayHit
 {
 public:
@@ -66,6 +76,7 @@ public:
     int materialIndx = -1.0f, objectIndx = -1.0f;
 };
 
+// Structure representing information from a ray tracing hit
 struct TraceInfo
 {
     glm::vec3 position{ 0.0f, 0.0f, 0.0f };
@@ -74,6 +85,7 @@ struct TraceInfo
     float roughness = 0.0f;
 };
 
+// Structure representing color and emission information after a hit
 struct HitColorGlow
 {
     glm::vec3 color   { 0.0f, 0.0f, 0.0f };

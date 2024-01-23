@@ -11,11 +11,11 @@ public:
     PREFIX Camera(float fov, float width, float height, float nearPlane, float farPlane)
         : m_Position({ 4.0f, 1.75f, 4.5f })
     {
-        //matrice di proiezione
+        // Projection matrix
         m_ProjectionMatrix = glm::perspectiveFov(glm::radians(fov), (float)width, (float)height, nearPlane, farPlane);
         m_invProjectionMatrix = glm::inverse(m_ProjectionMatrix);
 
-        //matrice di vista
+        // View matrix
         glm::vec3 upDirection = glm::vec3(0.0f, 1.0f, 0.0f); //up lungo l'asse y
         m_ViewMatrix = glm::lookAt(m_Position, glm::vec3{ 0.0f, 1.75f, 0.0f }, upDirection);
         m_invViewMatrix = glm::inverse(m_ViewMatrix);
