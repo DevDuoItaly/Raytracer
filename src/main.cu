@@ -137,7 +137,7 @@ __global__ void upscale(emissionPixel* emission, emissionPixel* tempEmission, in
     if (x >= width || y >= height)
         return;
     
-    tempEmission[x + y * width].Set(emission[(int)(x / scaleFactor) + (int)(y / scaleFactor) * width]);
+    emission[x + y * width].Set(tempEmission[(int)(x / scaleFactor) + (int)(y / scaleFactor) * width]);
 }
 
 __global__ void addImages(pixel* image, emissionPixel* emission, int width, int height)
@@ -167,67 +167,152 @@ __global__ void filterEmission(emissionPixel* emission, int width, int height)
         p.emission = glm::vec3{ 0.0f, 0.0f, 0.0f };
 }
 
-__global__ void createKernel(float* kernel, float sigma, int size)
+__global__ void createKernel(float* kernel, float sigma, int kernelSize)
 {
     if(threadIdx.x > 0 || threadIdx.y > 0)
         return;
     
     float sum = 0.0f;
 
-    int radius = size * 2 + 1;
-
     // calcolo valori del kernel
-    for (int y = -size; y <= size; ++y)
-        for (int x = -size; x <= size; ++x)
-        {
-            float value = exp(-(x * x + y * y) / (2 * sigma * sigma));
-            kernel[(x + size) + (y + size) * radius] = value;
-            sum += value;
-        }
-    
+    for(int i = -kernelSize; i <= kernelSize; ++i)
+    {
+        float value = exp(-(i * i) / (2 * sigma));
+        kernel[i + kernelSize] = value;
+        sum += value;
+    }
+
     sum = 1.0f / sum;
     
     // normalizzo il kernel
-    for (int y = 0; y < radius; ++y)
-        for (int x = 0; x < radius; ++x)
-            kernel[x + y * radius] *= sum;
+    for(int i = 0; i < 2 * kernelSize + 1; ++i)
+        kernel[i] *= sum;
 }
 
-__global__ void gaussianBlur(emissionPixel* emission, emissionPixel* tempEmission, float* kernel, int width, int height, int downScaleW, int downScaleH, int size)
+__global__ void gaussianBlurH(emissionPixel* emission, emissionPixel* tempEmission, float* kernel, int width, int height, int downScaleW, int downScaleH, int kernelSize)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
 
-    if (x >= downScaleW || y >= downScaleH)
-        return;
+    extern __shared__ emissionPixel s_tile[];
+
+    int s_x = threadIdx.x;
+    int s_y = threadIdx.y;
+    int s_width = blockDim.x + 2 * kernelSize;
+
+    int indx = x + y * width;
+    int s_indx = s_x + kernelSize + s_y * s_width;
+
+    emissionPixel pixel;
+    if(x < downScaleW && y < downScaleH)
+        pixel = tempEmission[indx];
     
-    emissionPixel pixel{ { 0.0f, 0.0f, 0.0f }, 0.0f };
+    s_tile[s_indx] = pixel;
+
+    if (s_x < kernelSize)
+    {
+        // Handle left edge/border
+        if (((x - kernelSize) >= 0) && ((x - kernelSize) < downScaleW * downScaleH))
+            pixel = tempEmission[indx - kernelSize];
+        else
+            pixel.Set({ 0.0f, 0.0f, 0.0f }, 0.0f);
+        
+        s_tile[s_indx - kernelSize] = pixel;
+
+        // Handle right edge/border
+        if (((x + blockDim.x) < downScaleW) && (y < downScaleH))
+            pixel = tempEmission[indx + blockDim.x];
+        else
+            pixel.Set({ 0.0f, 0.0f, 0.0f }, 0.0f);
+        
+        s_tile[s_indx + blockDim.x] = pixel;
+    }
+    __syncthreads();
+    
+    pixel.Set({ 0.0f, 0.0f, 0.0f }, 0.0f);
 
     int emissionsCount = 0;
+    for(int i = -kernelSize; i <= kernelSize; ++i)
+    {
+        float k = kernel[i + kernelSize];
+        emissionPixel& p = s_tile[i + s_indx];
+        pixel.emission += p.emission * glm::vec3(k);
 
-    int radius = size * 2 + 1;
-
-    for (int kY = -size; kY <= size; ++kY)
-        for (int kX = -size; kX <= size; ++kX)
+        if(p.strenght > 0)
         {
-            int newX = glm::min(glm::max(x + kX, 0), width  - 1);
-            int newY = glm::min(glm::max(y + kY, 0), height - 1);
-
-            float k = kernel[(kX + size) + (kY + size) * radius];
-            emissionPixel& p = tempEmission[newX + newY * width];
-            pixel.emission += p.emission * glm::vec3(k);
-
-            if(p.strenght > 0)
-            {
-                ++emissionsCount;
-                pixel.strenght += p.strenght;
-            }
+            ++emissionsCount;
+            pixel.strenght += p.strenght;
         }
+    }
     
     if(emissionsCount > 0)
         pixel.strenght /= emissionsCount;
     
-    emission[x + y * width].Set(pixel.emission, pixel.strenght);
+    if(x < downScaleW && y < downScaleH)
+    emission[indx].Set(pixel.emission, pixel.strenght);
+}
+
+__global__ void gaussianBlurV(emissionPixel* emission, emissionPixel* tempEmission, float* kernel, int width, int height, int downScaleW, int downScaleH, int kernelSize)
+{
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+    int y = threadIdx.y + blockIdx.y * blockDim.y;
+
+    extern __shared__ emissionPixel s_tile[];
+
+    int s_x = threadIdx.x;
+    int s_y = threadIdx.y;
+    int s_width = blockDim.x;
+
+    int indx = x + y * width;
+    int s_indx = s_x + (s_y + kernelSize) * s_width;
+
+    emissionPixel pixel;
+    if(x < downScaleW && y < downScaleH)
+        pixel = emission[indx];
+    
+    s_tile[s_indx] = pixel;
+
+    if (s_y < kernelSize)
+    {
+        // Handle left edge/border
+        if (((y - kernelSize) >= 0) && ((y - kernelSize) < downScaleW * downScaleH))
+            pixel = emission[indx - kernelSize * width];
+        else
+            pixel.Set({ 0.0f, 0.0f, 0.0f }, 0.0f);
+        
+        s_tile[s_indx - kernelSize * s_width] = pixel;
+
+        // Handle right edge/border
+        if (((y + blockDim.y) < downScaleH) && (x < downScaleW))
+            pixel = emission[indx + blockDim.y * width];
+        else
+            pixel.Set({ 0.0f, 0.0f, 0.0f }, 0.0f);
+        
+        s_tile[s_indx + blockDim.y * s_width] = pixel;
+    }
+    __syncthreads();
+    
+    pixel.Set({ 0.0f, 0.0f, 0.0f }, 0.0f);
+
+    int emissionsCount = 0;
+    for(int i = -kernelSize; i <= kernelSize; ++i)
+    {
+        float k = kernel[i + kernelSize];
+        emissionPixel& p = s_tile[i * s_width + s_indx];
+        pixel.emission += p.emission * glm::vec3(k);
+
+        if(p.strenght > 0)
+        {
+            ++emissionsCount;
+            pixel.strenght += p.strenght;
+        }
+    }
+    
+    if(emissionsCount > 0)
+        pixel.strenght /= emissionsCount;
+    
+    if(x < downScaleW && y < downScaleH)
+    tempEmission[indx].Set(pixel.emission, pixel.strenght);
 }
 
 /*
@@ -273,7 +358,7 @@ void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
 {
 	int scaleFactor = 2, scale = scaleFactor;
 
-	int kernelSigma = 1000.0f, kernelSize = 8;
+	int kernelSigma = 20.0f, kernelSize = 8;
 
     dim3 BlockSize(16, 16, 1);
 	dim3 GridSize((WIDTH + BlockSize.x - 1) / BlockSize.x, (HEIGHT + BlockSize.y - 1) / BlockSize.y, 1);
@@ -283,8 +368,11 @@ void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
 	CUDA(cudaMalloc((void**)&d_tempEmission, width * height * sizeof(emissionPixel)))
 
     float* d_kernel;
-	CUDA(cudaMalloc((void**)&d_kernel, (kernelSize * 2 + 1) * sizeof(float)))
+	CUDA(cudaMalloc((void**)&d_kernel, (2 * kernelSize + 1) * sizeof(float)))
 
+    createKernel<<<1, 1>>>(d_kernel, kernelSigma, kernelSize);
+
+    CUDA(cudaDeviceSynchronize())
 
     int totalEmissionBytes = width * height * sizeof(emissionPixel);
     emissionPixel* h_tempEmission = (emissionPixel*) malloc(totalEmissionBytes);
@@ -302,30 +390,46 @@ void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
         dim3 DownGridSize((downScaleW + BlockSize.x - 1) / BlockSize.x, (downScaleH + BlockSize.y - 1) / BlockSize.y, 1);
 		downsample<<<DownGridSize, BlockSize>>>(emission, d_tempEmission, width, downScaleW, downScaleH, scaleFactor, percStepV);
 
+        CUDA(cudaDeviceSynchronize())
+
         // CUDA(cudaMemcpy(h_tempEmission, d_tempEmission, totalEmissionBytes, cudaMemcpyDeviceToHost))
 		// writePPM("output_downscale.ppm", h_tempEmission, width, height);
 
 		// Blur downscaled image
-        createKernel<<<1, 1>>>(d_kernel, kernelSigma, kernelSize);
-		gaussianBlur<<<DownGridSize, BlockSize>>>(emission, d_tempEmission, d_kernel, width, height, downScaleW, downScaleH, kernelSize);
+        int s_size = (BlockSize.x + 2 * kernelSize) * BlockSize.y * sizeof(emissionPixel);
+		gaussianBlurH<<<DownGridSize, BlockSize, s_size>>>(emission, d_tempEmission, d_kernel, width, height, downScaleW, downScaleH, kernelSize);
+        CUDA(cudaDeviceSynchronize())
 
         // CUDA(cudaMemcpy(h_tempEmission, emission, totalEmissionBytes, cudaMemcpyDeviceToHost))
+		// writePPM("output_blur.ppm", h_tempEmission, width, height);
+
+        s_size = BlockSize.x * (BlockSize.y + 2 * kernelSize) * sizeof(emissionPixel);
+        gaussianBlurV<<<DownGridSize, BlockSize, s_size>>>(emission, d_tempEmission, d_kernel, width, height, downScaleW, downScaleH, kernelSize);
+        CUDA(cudaDeviceSynchronize())
+
+        // CUDA(cudaMemcpy(h_tempEmission, d_tempEmission, totalEmissionBytes, cudaMemcpyDeviceToHost))
 		// writePPM("output_blur.ppm", h_tempEmission, width, height);
 
 		// Upscale blurred image
         upscale<<<GridSize, BlockSize>>>(emission, d_tempEmission, width, height, scale);
 
+        CUDA(cudaDeviceSynchronize())
+
         // CUDA(cudaMemcpy(h_tempEmission, d_tempEmission, totalEmissionBytes, cudaMemcpyDeviceToHost))
 		// writePPM("output_upscale.ppm", h_tempEmission, width, height);
 
 		// Add upscaled image with base image
-        addImages<<<GridSize, BlockSize>>>(image, d_tempEmission, width, height);
+        addImages<<<GridSize, BlockSize>>>(image, emission, width, height);
+
+        CUDA(cudaDeviceSynchronize())
 
         // CUDA(cudaMemcpy(h_tempImage, image, totalBytes, cudaMemcpyDeviceToHost))
 		// writePPM("output_add.ppm", h_tempImage, width, height);
 
 		// Filter downscaled image
-        filterEmission<<<DownGridSize, BlockSize>>>(emission, width, height);
+        filterEmission<<<DownGridSize, BlockSize>>>(d_tempEmission, width, height);
+
+        CUDA(cudaDeviceSynchronize())
 
         // CUDA(cudaMemcpy(h_tempEmission, emission, totalEmissionBytes, cudaMemcpyDeviceToHost))
 		// writePPM("output_filter.ppm", h_tempEmission, width, height);
@@ -335,6 +439,10 @@ void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
 
         downScaleW = width / scale;
         downScaleH = height / scale;
+
+        emissionPixel* temp = d_tempEmission;
+        d_tempEmission = emission;
+        emission = temp;
 	}
 
     cudaFree(d_kernel);
