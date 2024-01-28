@@ -13,6 +13,7 @@
 \usepackage{geometry}
 \usepackage{amsmath}
 \usepackage{xcolor}
+\usepackage{tikz}
 
 \newcommand{\coloredbox}[1]{%
   \textcolor[HTML]{#1}{\rule{1.5ex}{1.5ex}}\hspace{0.3em}}
@@ -34,13 +35,45 @@
  top=20mm,
 }
 
-\title{Rendering con Raytracing}
-\author{Cirelli Samuele, Fiorelli Federico}
-\date{\today}
 
 \begin{document}
 
-\maketitle
+\begin{titlepage}
+   \centering
+   \includegraphics[width=6cm]{Uniroma1.svg.png} 
+   \vspace{1cm}
+
+   {\scshape\LARGE Università "Sapienza" di Roma \par}
+   \vspace{0.5cm}
+   {\scshape\Large Facoltà di Informatica\par}
+   \vfill
+
+   \rule{\textwidth}{1pt}\vspace*{-\baselineskip}\vspace*{2pt}
+   \rule{\textwidth}{0.4pt}\\[\baselineskip]
+
+   {\LARGE \bfseries Rendering con Raytracing\par}
+
+   \rule{\textwidth}{0.4pt}\vspace*{-\baselineskip}\vspace{2pt}
+   \rule{\textwidth}{1pt}\\[\baselineskip]
+
+   \vfill
+
+\begin{tikzpicture}[remember picture,overlay]
+   \node[anchor=south west,inner sep=0pt] at ([xshift=3cm,yshift=3.7cm]current page.south west) {
+      \begin{tikzpicture}
+         \clip (1,1) circle (1cm); % Adjust the radius for the size of the circle
+         \node[anchor=south west,inner sep=0pt] at (0,0) {\includegraphics[width=2cm]{dev duo lgoo.png}};
+      \end{tikzpicture}
+   };
+\end{tikzpicture}
+
+   {\Large\itshape Cirelli Samuele\par}
+   {\Large\itshape Fiorelli Federico\par}
+
+   \vspace{1.5cm}
+
+   {\large 28 gennaio 2024\par}
+\end{titlepage}
 
 \tableofcontents
 \newpage
@@ -304,13 +337,23 @@ L'effetto di glow è realizzato attraverso una serie di passaggi che modificano 
 \subsubsection{Impatto Visivo del Glow}
 L'effetto di glow ha un impatto significativo sull'aspetto visivo dell'immagine renderizzata. Migliora la percezione della luminosità e della brillantezza delle sorgenti luminose, aggiunge profondità e contribuisce alla creazione di atmosfere più realistiche e coinvolgenti nella scena.
 
-\subsubsection{Ottimizzazione e Prestazioni}
-L'implementazione dell'effetto di glow è stata ottimizzata per mantenere un equilibrio tra qualità visiva e prestazioni. Attraverso l'uso di tecniche come il downscaling e l'upsampling, siamo in grado di applicare questo effetto in modo efficiente, senza impatti significativi sul tempo complessivo di rendering.
+\subsection{Ottimizzazione dell'Effetto Glow e Riduzione della Complessità Computazionale tramite Memoria Condivisa in CUDA}
+Il miglioramento delle prestazioni dell'effetto di glow nell'implementazione CUDA è stato raggiunto sfruttando la memoria condivisa delle GPU. Questa ottimizzazione ha portato a una significativa riduzione della complessità computazionale del processo di blur gaussiano, cruciale per l'effetto di glow.
+
+\subsubsection{Memoria Condivisa e Complessità Computazionale}
+L'utilizzo della memoria condivisa (\texttt{\_\_shared\_\_}) in CUDA per l'applicazione del blur gaussiano ha permesso di trasformare la complessità computazionale dell'operazione. Nel modello tradizionale, il calcolo del blur per ogni pixel richiederebbe accessi multipli alla memoria globale per ciascun elemento del kernel, con una complessità computazionale proporzionale a \(O(n \cdot m)\), dove \(n\) è il numero di pixel dell'immagine e \(m\) la dimensione del kernel.
+
+\subsubsection{Riduzione degli Accessi alla Memoria Globale}
+Grazie all'adozione della memoria condivisa, i dati necessari per il calcolo del blur sono pre-caricati una sola volta per blocco di thread, riducendo drasticamente il numero di accessi lenti alla memoria globale. Questo approccio abbassa la complessità computazionale del blur a una costante per il caricamento dei dati nel blocco, seguita da un accesso rapido alla memoria condivisa per ogni operazione di blur, riducendo efficacemente la complessità a \(O(n)\) per l'intera operazione su tutti i pixel.
+
+\subsubsection{Separazione del Kernel di Blur}
+La separazione del kernel di blur in passaggi orizzontali e verticali (\textit{gaussianBlurH} e \textit{gaussianBlurV}) è un altro fattore chiave nella riduzione della complessità computazionale. Questa tecnica divide un'operazione di complessità \(O(n \cdot m^2)\) in due operazioni lineari \(O(n \cdot m)\), quindi di complessità totale \(O(2n \cdot m)\), dove \(m\) rappresenta ora la lunghezza unidimensionale del kernel. L'uso della memoria condivisa in questo contesto permette un'ulteriore ottimizzazione, garantendo che ogni valore del kernel sia caricato una sola volta per blocco di thread, indipendentemente dal numero di pixel elaborati.
+
 \newpage
 
 
 \section{Benchmark e Risultati}
-Per valutare le prestazioni del ray tracer, abbiamo condotto una serie di benchmark utilizzando un processore Intel I5-10600K 4.1GHz 12 Core.
+Per valutare le prestazioni del ray tracer, abbiamo condotto una serie di benchmark utilizzando un processore \texttt{Intel I5-10600K 4.1GHz 12 Cores} e una scheda video \texttt{NVIDIA GeForce RTX 2080Ti 1.4GHz 4352 CUDA Cores}.
 \subsection{CPU}
 \subsubsection{Benchmark al variare di Size e Samples}
 Abbiamo valutato le prestazioni del sistema variando la dimensione dell'immagine e il numero di samples per pixel. Il Max Depth è stato impostato a 20 e la dimensione dei tile a 16x16px. Di seguito sono riportati i risultati:
@@ -386,6 +429,76 @@ In base a questa legge, anche se incrementiamo linearmente il numero di thread (
 
 Questa teoria spiega perché, nei nostri test, l'incremento del numero di thread ha portato a un miglioramento delle prestazioni che tende a stabilizzarsi piuttosto che aumentare proporzionalmente.
 
+
+\subsection{GPU}
+\subsubsection{Benchmark al variare di Size e Samples}
+Abbiamo valutato le prestazioni del sistema variando la dimensione dell'immagine e il numero di samples per pixel. Il Max Depth è stato impostato a 20 e la block size a 16x16px. Di seguito sono riportati i risultati:
+
+\begin{center}
+\begin{figure}[h]
+    \centering
+    \begin{adjustbox}{width=0.85\paperwidth,center}
+    \includegraphics[width=0.85\paperwidth]{chart benchmark gpu renderer.png}
+    \end{adjustbox}
+\end{figure}
+\end{center}
+La tabella seguente mostra i tempi di rendering (in millisecondi) per diverse combinazioni di Size e Samples. I risultati sono suddivisi nelle fasi di Rendering e Applicazione dell'effetto di Glow:
+
+\begin{center}
+\noindent
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|c|c|c|c|c|c|c|c|c|}
+\hline
+ \makecell{Size\\Samples} & \makecell{512x256\\5} & \makecell{512x256\\10} & \makecell{512x256\\15} & \makecell{1024x512\\5} & \makecell{1024x512\\10} & \makecell{1024x512\\15} & \makecell{2048x1024\\5} & \makecell{2048x1024\\10} & \makecell{2048x1024\\15} \\
+\hline
+\hline
+\coloredbox{6D2D6C}Rendering (ms) & 467 & 938 & 1315 & 765 & 1585 & 2228 & 1717 & 3466 & 5079 \\
+\hline
+\coloredbox{54AA5B}Glow (ms) & 40 & 40 & 40 & 45 & 45 & 45 & 56 & 56 & 56 \\
+\hline
+\end{tabular}
+}
+\end{center}
+
+\newpage
+
+\subsubsection{Bemchmark pre e post ottimizzazione di memoria}
+Abbiamo inoltre valutato l'impatto del tipo di memoria sulle prestazioni di rendering. Per questi test, abbiamo fissato la dimensione dell'immagine a 512x256px, il numero di samples per pixel a 10, il MaxDepth a 20 e la block size a 16x16px.
+
+\begin{center}
+\begin{figure}[h]
+    \centering
+    \begin{adjustbox}{width=0.85\paperwidth,center}
+    \includegraphics[width=0.85\paperwidth]{chart benchmark gpu renderer memory.png}
+    \end{adjustbox}
+\end{figure}
+\end{center}
+
+La tabella seguente riassume i tempi di rendering (in millisecondi) al variare del tipo di memoria usato:
+
+\begin{center}
+\resizebox{0.35\textwidth}{!}{%
+\begin{tabular}{|l|c|c|}
+\hline
+\makecell{Memory} & \makecell{Global} & \makecell{Shared} \\
+\hline
+\hline
+\coloredbox{6D2D6C}Blur & 2.6 &  \\
+\hline
+\coloredbox{D37C44}Blur H &  & 0.0915 \\
+\hline
+\coloredbox{36682F}Blur V &  & 0.0902 \\
+\hline
+\end{tabular}
+}
+\end{center}
+
+L'analisi dei tempi di esecuzione per l'effetto di blur evidenzia significative differenze tra l'utilizzo della memoria globale e della memoria shared in ambiente CUDA. La tabella presentata mostra che l'operazione di blur totale, eseguita in memoria globale, richiede un tempo di 2.6 millisecondi. Questo valore è confrontato con l'approccio che utilizza la memoria shared, dove le operazioni di blur sono state suddivise in orizzontale (Blur H) e verticale (Blur V).
+
+Notabilmente, l'implementazione con memoria shared mostra un drastico miglioramento nei tempi di esecuzione: solo 91.5 $\mu$s per il blur orizzontale e 90.2 $\mu$s per il blur verticale. Questi risultati sottolineano l'efficienza della memoria shared per operazioni che richiedono un elevato livello di accesso concorrente ai dati, riducendo significativamente il tempo di calcolo grazie alla riduzione dei colli di bottiglia nella lettura e scrittura dei dati.
+
+L'ottimizzazione dell'effetto di blur mediante l'uso della memoria shared dimostra quindi come approcci adeguati alla gestione della memoria possano avere un impatto sostanziale sulle prestazioni complessive di algoritmi di elaborazione immagini su GPU.
+
 \section{Riferimenti}
 
 \begin{thebibliography}{99}
@@ -402,6 +515,11 @@ Roger Allen,
 \bibitem{riferimento3}
 \textit{OpenGL Camera},
 \url{https://learnopengl.com/Getting-started/Camera}
+
+\bibitem{riferimento4}
+Robert Crovella,
+\textit{Effective usage of Shared Memory},
+\url{https://shorturl.at/qrMN3}
 
 \end{thebibliography}
 \end{document}
