@@ -20,7 +20,7 @@
 #define WIDTH 1024
 #define HEIGHT 512
 
-#define SAMPLES 5
+#define SAMPLES 10
 
 #define CUDA(f) { cudaError_t err = f;\
     if(err != cudaSuccess)\
@@ -524,7 +524,7 @@ int main(int argc, char **argv)
 
     CUDA(cudaDeviceSynchronize())
 
-    printf("Ended in %lf\n", t.ElapsedMillis());
+    printf("Ended in %lfms\n", t.ElapsedMillis());
 
     printf("Applying Glow\n");
     t.Reset();
@@ -532,7 +532,7 @@ int main(int argc, char **argv)
     // TODO: Bloom
     applyGlow(d_image, d_emission, WIDTH, HEIGHT);
 
-    printf("Ended in %lf\n", t.ElapsedMillis());
+    printf("Ended in %lfms\n", t.ElapsedMillis());
 
     pixel* h_image = (pixel*) malloc(totalImageBytes);
     CUDA(cudaMemcpy(h_image, d_image, totalImageBytes, cudaMemcpyDeviceToHost))
