@@ -1,0 +1,53 @@
+NVIDIA GeForce RTX 2080 Ti - 12GB di VRAM
+
+// Constants //
+Max Depth: 20
+Tile:      16x16
+
+// Tests //
+Size:    512x256
+Samples: 5
+Render:  467 ms
+Glow:    40  ms
+
+Size:    512x256
+Samples: 10
+Render:  938 ms
+Glow:    40  ms
+
+Size:    512x256
+Samples: 15
+Render:  1315 ms
+Glow:    40   ms
+
+
+Size:    1024x512
+Samples: 5
+Render:  765 ms
+Glow:    45  ms
+
+Size:    1024x512
+Samples: 10
+Render:  1585 ms
+Glow:    45   ms
+
+Size:    1024x512
+Samples: 15
+Render:  2228 ms
+Glow:    45   ms
+
+
+Size:    2048x1024
+Samples: 5
+Render:  1717 ms
+Glow:    56   ms
+
+Size:    2048x1024
+Samples: 10
+Render:  3466 ms
+Glow:    56   ms
+
+Size:    2048x1024
+Samples: 15
+Render:  5079 ms
+Glow:    56   ms

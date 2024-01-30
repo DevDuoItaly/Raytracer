@@ -661,6 +661,66 @@ Questa teoria spiega perché, nei nostri test, l'incremento del numero di
 thread ha portato a un miglioramento delle prestazioni che tende a
 stabilizzarsi piuttosto che aumentare proporzionalmente.
 
+## GPU
+
+### Benchmark al variare di Size e Samples
+
+Abbiamo valutato le prestazioni del sistema variando la dimensione
+dell'immagine e il numero di samples per pixel. Il Max Depth è stato
+impostato a 20 e la block size a 16x16px. Di seguito sono riportati i
+risultati:
+
+<p align="center">
+<img src="https://github.com/DevDuoItaly/Raytracer/assets/77865732/309037d8-5395-4f33-864e-92461b9de207">
+</p>
+
+La tabella seguente mostra i tempi di rendering (in millisecondi) per
+diverse combinazioni di Size e Samples. I risultati sono suddivisi nelle
+fasi di Rendering e Applicazione dell'effetto di Glow:
+
+<p align="center">
+<img src="https://github.com/DevDuoItaly/Raytracer/assets/77865732/333c2675-62a7-48c5-9db0-a62648fc3d93">
+</p>
+
+### Bemchmark pre e post ottimizzazione di memoria
+
+Abbiamo inoltre valutato l'impatto del tipo di memoria sulle prestazioni
+di rendering. Per questi test, abbiamo fissato la dimensione
+dell'immagine a 512x256px, il numero di samples per pixel a 10, il
+MaxDepth a 20 e la block size a 16x16px.
+
+<p align="center">
+<img src="https://github.com/DevDuoItaly/Raytracer/assets/77865732/47623c03-5e4e-40e5-9de5-8ad9362d0429">
+</p>
+
+La tabella seguente riassume i tempi di rendering (in millisecondi) al
+variare del tipo di memoria usato:
+
+<p align="center">
+<img src="https://github.com/DevDuoItaly/Raytracer/assets/77865732/87ab091a-cb00-425a-b6c4-17d7b1699341" style="width: 300px;">
+</p>
+
+L'analisi dei tempi di esecuzione per l'effetto di blur evidenzia
+significative differenze tra l'utilizzo della memoria globale e della
+memoria shared in ambiente CUDA. La tabella presentata mostra che
+l'operazione di blur totale, eseguita in memoria globale, richiede un
+tempo di 2.6 millisecondi. Questo valore è confrontato con l'approccio
+che utilizza la memoria shared, dove le operazioni di blur sono state
+suddivise in orizzontale (Blur H) e verticale (Blur V).
+
+Notabilmente, l'implementazione con memoria shared mostra un drastico
+miglioramento nei tempi di esecuzione: solo 91.5 $\mu$s per il blur
+orizzontale e 90.2 $\mu$s per il blur verticale. Questi risultati
+sottolineano l'efficienza della memoria shared per operazioni che
+richiedono un elevato livello di accesso concorrente ai dati, riducendo
+significativamente il tempo di calcolo grazie alla riduzione dei colli
+di bottiglia nella lettura e scrittura dei dati.
+
+L'ottimizzazione dell'effetto di blur mediante l'uso della memoria
+shared dimostra quindi come approcci adeguati alla gestione della
+memoria possano avere un impatto sostanziale sulle prestazioni
+complessive di algoritmi di elaborazione immagini su GPU.
+
 # Riferimenti
 - Peter Shirley, *Ray Tracing in One Weekend*,
 <https://raytracing.github.io/books/RayTracingInOneWeekend.html>

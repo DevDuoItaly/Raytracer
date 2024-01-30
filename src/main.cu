@@ -148,8 +148,10 @@ __global__ void addImages(pixel* image, emissionPixel* emission, int width, int 
     if (x >= width || y >= height)
         return;
     
-    emissionPixel& p = emission[x + y * width];
-	image[x + y * width].Add(p.emission * glm::vec3(0.1f) * p.strenght);
+    int indx = x + y * width;
+    
+    emissionPixel& p = emission[indx];
+	image[indx].Add(p.emission * glm::vec3(0.1f) * p.strenght);
 }
 
 __global__ void filterEmission(emissionPixel* emission, int width, int height)
@@ -452,7 +454,7 @@ void applyGlow(pixel* image, emissionPixel* emission, int width, int height)
 int main(int argc, char **argv) 
 {
     // Set max stack frame size for each thread
-    cudaDeviceSetLimit(cudaLimitStackSize, 10240);
+    cudaDeviceSetLimit(cudaLimitStackSize, 10240); // Max stress (131072) | Default (10240)
 
     // Allocate Texture Memory
 	int totalImageBytes = WIDTH * HEIGHT * sizeof(pixel);

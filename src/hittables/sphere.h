@@ -11,7 +11,7 @@ public:
         : m_Position(position), m_Radius(radius), m_MaterialIndx(materialIndx) {}
     
     PREFIX_DEVICE virtual bool intersect(const Ray& ray, RayHit& hit) const
-    {   
+    {
         glm::vec3 origin = ray.origin - m_Position;
 
         float a = glm::dot(ray.direction, ray.direction);

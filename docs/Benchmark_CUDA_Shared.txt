@@ -1,0 +1,14 @@
+NVIDIA GeForce RTX 2080 Ti - 12GB di VRAM
+
+// Constants //
+Size:      1024x512
+Samples:   10
+Max Depth: 20
+Tile:      16x16
+
+// Tests //
+Type: shared memory
+Glow: 91.5 us + 90.2 us
+
+Type: global memory
+Glow: 2.6 ms
