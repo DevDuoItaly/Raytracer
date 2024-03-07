@@ -11,6 +11,7 @@
 #include "hittables/hittablesList.h"
 
 #include <pqxx/pqxx>
+#include <random>
 
 
 // Class to handle PostgreSQL database interactions
@@ -125,6 +126,24 @@ public:
         return new HittablesList(l_world, query.size());
     }
 
+    //genera casualmente una scena
+    void generateRandomScene()
+    {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<float> dis(-10.0f, 10.0f); //range per coordinate x, y, z
+
+        for (int i = 0; i < NUM_SPHERES; ++i)
+        {
+            glm::vec3 position(dis(gen), dis(gen), dis(gen));
+            float radius = dis(gen);
+            glm::vec3 color(dis(gen), dis(gen), dis(gen));
+
+            // Aggiungi la sfera generata casualmente alla scena nel database
+            addSphereToScene(position, radius, color);
+        }
+    }
+
 private:
 
     // Function to initialize the database
@@ -227,6 +246,27 @@ private:
 		return v;
 	}
 
+    //aggiunge una sfera alla scena nel database
+    void addSphereToScene(const glm::vec3& position, float radius, const glm::vec3& color)
+    {
+        std::stringstream ss;
+        ss << "INSERT INTO sphere (position, radius, material_id, scene_id) VALUES ('("
+           << position.x << ", " << position.y << ", " << position.z << ")', "
+           << radius << ", " << getRandomMaterialID() << ", " << SCENE_ID << ")";
+
+        pqxx::nontransaction work(m_Cxn);
+        work.exec(ss.str().c_str());
+    }
+
+    //ritorna un ID casuale per il materiale delle sfere
+    int getRandomMaterialID()
+    {
+        //TODO
+        return 0;
+    }
+
 private:
 	pqxx::connection m_Cxn;
+    static const int SCENE_ID = 0;
+    static const int NUM_SPHERES = 10;
 };
