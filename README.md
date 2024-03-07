@@ -1,12 +1,12 @@
-#TODO:
+# Rendering con Raytracing
+
+# TODO:
 [ ] UML
 [ ] Use Case diagram
 [ ] State Chart diagram
 [ ] efficienza, speedup
 [ ] Random Scene generator
 [ ] Monitor
-
-# Rendering con Raytracing
 
 ## Librerie utilizzate
 ### Redis
