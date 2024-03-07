@@ -1,5 +1,5 @@
 # TODO:
-- [ ] UML
+- [x] UML
 - [ ] Use Case diagram
 - [ ] State Chart diagram
 - [ ] efficienza, speedup
