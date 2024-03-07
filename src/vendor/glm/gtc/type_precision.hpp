@@ -604,11 +604,13 @@ namespace glm
 	/// @see gtc_type_precision
 	typedef highp_float64_t float64_t;
 
-	/// Default 32 bit single-qualifier floating-point scalar.
+	// 32 bit single-qualifier floating-point scalar.
+	// @see gtc_type_precision
 	/// @see gtc_type_precision
 	typedef highp_float32_t f32;
 
-	/// Default 64 bit double-qualifier floating-point scalar.
+	// 64 bit double-qualifier floating-point scalar.
+	// @see gtc_type_precision
 	/// @see gtc_type_precision
 	typedef highp_float64_t f64;
 #endif
@@ -1802,7 +1804,8 @@ namespace glm
 	/// @see gtc_type_precision
 	typedef float32 float32_t;
 
-	/// 32 bit single-qualifier floating-point scalar.
+	// Default 32 bit single-qualifier floating-point scalar.
+	// @see gtc_type_precision
 	/// @see gtc_type_precision
 	typedef float32 f32;
 
@@ -1812,7 +1815,8 @@ namespace glm
 		/// @see gtc_type_precision
 		typedef float64 float64_t;
 
-		/// 64 bit double-qualifier floating-point scalar.
+		// Default 64 bit double-qualifier floating-point scalar.
+		// @see gtc_type_precision
 		/// @see gtc_type_precision
 		typedef float64 f64;
 #	endif//GLM_FORCE_SINGLE_ONLY
