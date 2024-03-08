@@ -3,8 +3,8 @@
 - [ ] Use Case diagram
 - [ ] State Chart diagram
 - [ ] efficienza, speedup
-- [ ] Random Scene generator
-- [ ] Monitor
+- [x] Random Scene generator
+- [x] Monitor
 
 # Rendering con Raytracing
 
