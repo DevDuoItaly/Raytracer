@@ -22,6 +22,8 @@
 
 #define SAMPLES 10
 
+#define MAXDEPTH 20
+
 #define CUDA(f) { cudaError_t err = f;\
     if(err != cudaSuccess)\
         printf("Cuda Error: %s\n", cudaGetErrorString(err)); }
@@ -54,7 +56,7 @@ __global__ void kernel(pixel* image, emissionPixel* emission, int width, int hei
     HitColorGlow result;
     for(int i = 0; i < SAMPLES; ++i)
     {
-        HitColorGlow sample = AntiAliasing(u, v, pixelOffX, pixelOffY, camera, world, lights, materials, &randState);
+        HitColorGlow sample = AntiAliasing(u, v, pixelOffX, pixelOffY, camera, world, lights, materials, &randState, MAXDEPTH);
         result.color            += glm::clamp(sample.color,    glm::vec3(0.0f), glm::vec3(1.0f));
         result.emission         += glm::clamp(sample.emission, glm::vec3(0.0f), glm::vec3(1.0f));
         result.emissionStrenght += sample.emissionStrenght;

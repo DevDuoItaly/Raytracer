@@ -51,7 +51,7 @@ public:
     }
 
     // Function to retrieve materials from the database
-    Material* getMaterials()
+    Material* getMaterials(int* count)
     {
         pqxx::nontransaction work(m_Cxn);
 
@@ -60,6 +60,8 @@ public:
             return 0;
         
         Material* materials = (Material*) malloc(query.size() * sizeof(Material));
+
+        *count = query.size();
 
         // Loop over query results and populate materials
         for(int i = 0; i < query.size(); ++i)
@@ -127,21 +129,28 @@ public:
     }
 
     //genera casualmente una scena
-    void generateRandomScene()
+    Hittable* generateRandomScene(int materials)
     {
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::uniform_real_distribution<float> dis(-10.0f, 10.0f); //range per coordinate x, y, z
+        std::uniform_real_distribution<float> randPos(-10.0f, 10.0f); //range per coordinate x, y, z
+        std::uniform_real_distribution<float> randRadius(1.0f, 3.0f);
+        std::uniform_real_distribution<>      randMaterial(0, materials);
 
+	    Hittable** l_world = new Hittable*[NUM_SPHERES];
         for (int i = 0; i < NUM_SPHERES; ++i)
         {
-            glm::vec3 position(dis(gen), dis(gen), dis(gen));
-            float radius = dis(gen);
-            glm::vec3 color(dis(gen), dis(gen), dis(gen));
+            glm::vec3 position(randPos(gen), 0.25f, randPos(gen));
+            float radius = randRadius(gen);
+            uint8_t material = (uint8_t)randMaterial(gen);
 
             // Aggiungi la sfera generata casualmente alla scena nel database
-            addSphereToScene(position, radius, color);
+            // addSphereToScene(position, radius, color);
+
+            l_world[i] = new Sphere(position, radius, material);
         }
+
+        return new HittablesList(l_world, NUM_SPHERES);
     }
 
 private:

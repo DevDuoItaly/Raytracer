@@ -24,6 +24,8 @@
 
 #define MAXBLUR 5
 
+#define MAXDEPTH 20
+
 void writePPM(const char* path, pixel* img,              int width, int height);
 void writePPM(const char* path, emissionPixel* emission, int width, int height);
 
@@ -237,11 +239,12 @@ int main()
     // -- Init Lights
 	Light* lights = db.getLights(0);
 
-	// Init world
-	Hittable* world = db.getWorld(0);
+	// -- Init Materials
+	int materialsCount = 0;
+    Material* materials = db.getMaterials(&materialsCount);
 
-    // -- Init Materials
-    Material* materials = db.getMaterials();
+	// Init world
+	Hittable* world = db.generateRandomScene(materialsCount);
 
 	// Raytrace
 	ThreadPool pool(std::thread::hardware_concurrency() - 1);
@@ -288,7 +291,7 @@ int main()
 						HitColorGlow result;
 						for(int i = 0; i < SAMPLES; ++i)
 						{
-							HitColorGlow sample = AntiAliasing(u, v, pixelOffX, pixelOffY, &camera, &world, &lights, materials, &randState);
+							HitColorGlow sample = AntiAliasing(u, v, pixelOffX, pixelOffY, &camera, &world, &lights, materials, &randState, MAXDEPTH);
 							result.color            += glm::clamp(sample.color,    glm::vec3(0.0f), glm::vec3(1.0f));
 							result.emission         += glm::clamp(sample.emission, glm::vec3(0.0f), glm::vec3(1.0f));
 							result.emissionStrenght += sample.emissionStrenght;

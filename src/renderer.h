@@ -17,8 +17,6 @@ PREFIX_DEVICE bool debug = false;
 
 #include <cstdio>
 
-#define MAX_DEPTH 20
-
 // Function to convert UV coordinates to a direction vector in world space.
 PREFIX_DEVICE inline void UVToDirection(float u, float v, const glm::mat4& invProj, const glm::mat4& invView, glm::vec3& direction)
 {
@@ -27,7 +25,7 @@ PREFIX_DEVICE inline void UVToDirection(float u, float v, const glm::mat4& invPr
 }
 
 // Function to trace a ray through the scene and compute color and glow at the hit point.
-PREFIX_DEVICE HitColorGlow TraceRay(Ray ray, Hittable** world, Light** lights, Material* materials, float multiplier, int depth, curandState* randState, int& maxDepth)
+PREFIX_DEVICE HitColorGlow TraceRay(Ray ray, Hittable** world, Light** lights, Material* materials, float multiplier, int depth, curandState* randState, int& maxDepth, int maxTotalDepth)
 {
     if(multiplier < 0.001f)
     {
@@ -67,7 +65,7 @@ PREFIX_DEVICE HitColorGlow TraceRay(Ray ray, Hittable** world, Light** lights, M
     glm::vec3 emission = material.emissionColor;
     float emissionStrenght = material.glowStrength;
 
-    if(depth <= MAX_DEPTH)
+    if(depth <= maxTotalDepth)
     {
         ray.origin = offPosition;
 
@@ -81,7 +79,7 @@ PREFIX_DEVICE HitColorGlow TraceRay(Ray ray, Hittable** world, Light** lights, M
 
             if(glm::dot(ray.direction, hit.normal) > 0)
             {
-                HitColorGlow hitInfo = TraceRay(ray, world, lights, materials, multiplier * material.reflection, depth + 1, randState, maxDepth);
+                HitColorGlow hitInfo = TraceRay(ray, world, lights, materials, multiplier * material.reflection, depth + 1, randState, maxDepth, maxTotalDepth);
                 color += hitInfo.color;
 
                 if(hitInfo.emissionStrenght > 0)
@@ -117,7 +115,7 @@ PREFIX_DEVICE HitColorGlow TraceRay(Ray ray, Hittable** world, Light** lights, M
             ray.direction = glm::normalize(ray.direction + material.roughness * RANDOM_UNIT_EMISPHERE(randState, hit.normal));
             ray.origin = hit.position + ray.direction * 0.01f;
 
-            HitColorGlow hitInfo = TraceRay(ray, world, lights, materials, multiplier * 0.9f, depth, randState, maxDepth);
+            HitColorGlow hitInfo = TraceRay(ray, world, lights, materials, multiplier * 0.9f, depth, randState, maxDepth, maxTotalDepth);
             color += hitInfo.color;
             
             if(hitInfo.emissionStrenght > 0)
@@ -137,7 +135,7 @@ PREFIX_DEVICE HitColorGlow TraceRay(Ray ray, Hittable** world, Light** lights, M
 }
 
 // Function for anti-aliasing via supersampling at sub-pixel levels.
-PREFIX_DEVICE HitColorGlow AntiAliasing(float u, float v, float pixelOffX, float pixelOffY, Camera* camera, Hittable** world, Light** lights, Material* materials, curandState* randState)
+PREFIX_DEVICE HitColorGlow AntiAliasing(float u, float v, float pixelOffX, float pixelOffY, Camera* camera, Hittable** world, Light** lights, Material* materials, curandState* randState, int maxTotalDepth)
 {
     v = -v;
 
@@ -158,7 +156,7 @@ PREFIX_DEVICE HitColorGlow AntiAliasing(float u, float v, float pixelOffX, float
         // printf("DEBUG!\n");
 
         UVToDirection(u, v, invProj, invView, ray.direction);
-        TraceRay(ray, world, lights, materials, 1, 1, randState, maxDepth);
+        TraceRay(ray, world, lights, materials, 1, 1, randState, maxDepth, maxTotalDepth);
 
         debug = false;
     }
@@ -167,7 +165,7 @@ PREFIX_DEVICE HitColorGlow AntiAliasing(float u, float v, float pixelOffX, float
     */
 
     UVToDirection(u - pixelOffX, v - pixelOffY, invProj, invView, ray.direction);
-    HitColorGlow info = TraceRay(ray, world, lights, materials, 1, 1, randState, maxDepth);
+    HitColorGlow info = TraceRay(ray, world, lights, materials, 1, 1, randState, maxDepth, maxTotalDepth);
     result.color += info.color / glm::vec3(maxDepth);
     result.emission += info.emission;
     result.emissionStrenght = info.emissionStrenght;
@@ -175,7 +173,7 @@ PREFIX_DEVICE HitColorGlow AntiAliasing(float u, float v, float pixelOffX, float
     maxDepth = 0;
 
     UVToDirection(u + pixelOffX, v - pixelOffY, invProj, invView, ray.direction);
-    HitColorGlow info1 = TraceRay(ray, world, lights, materials, 1, 1, randState, maxDepth);
+    HitColorGlow info1 = TraceRay(ray, world, lights, materials, 1, 1, randState, maxDepth, maxTotalDepth);
     result.color += info1.color / glm::vec3(maxDepth);
     result.emission += info1.emission;
     result.emissionStrenght = glm::max(result.emissionStrenght, info1.emissionStrenght);
@@ -183,7 +181,7 @@ PREFIX_DEVICE HitColorGlow AntiAliasing(float u, float v, float pixelOffX, float
     maxDepth = 0;
 
     UVToDirection(u - pixelOffX, v + pixelOffY, invProj, invView, ray.direction);
-    HitColorGlow info2 = TraceRay(ray, world, lights, materials, 1, 1, randState, maxDepth);
+    HitColorGlow info2 = TraceRay(ray, world, lights, materials, 1, 1, randState, maxDepth, maxTotalDepth);
     result.color += info2.color / glm::vec3(maxDepth);
     result.emission += info2.emission;
     result.emissionStrenght = glm::max(result.emissionStrenght, info2.emissionStrenght);
@@ -191,7 +189,7 @@ PREFIX_DEVICE HitColorGlow AntiAliasing(float u, float v, float pixelOffX, float
     maxDepth = 0;
 
     UVToDirection(u + pixelOffX, v + pixelOffY, invProj, invView, ray.direction);
-    HitColorGlow info3 = TraceRay(ray, world, lights, materials, 1, 1, randState, maxDepth);
+    HitColorGlow info3 = TraceRay(ray, world, lights, materials, 1, 1, randState, maxDepth, maxTotalDepth);
     result.color += info3.color / glm::vec3(maxDepth);
     result.emission += info3.emission;
     result.emissionStrenght = glm::max(result.emissionStrenght, info3.emissionStrenght);
@@ -200,4 +198,22 @@ PREFIX_DEVICE HitColorGlow AntiAliasing(float u, float v, float pixelOffX, float
     result.emission *= glm::vec3(0.25f);
 
     return result;
+}
+
+// Function for anti-aliasing via supersampling at sub-pixel levels.
+PREFIX_DEVICE bool MaxRayDistance(float u, float v, Camera* camera, Hittable** world, Light** lights, Material* materials, curandState* randState, int maxTotalDepth)
+{
+    v = -v;
+
+    const glm::mat4& invProj = camera->GetInverseProjectionMatrix();
+    const glm::mat4& invView = camera->GetInverseViewMatrix();
+    
+    HitColorGlow result{ { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, 0.0f };
+    Ray ray{ camera->GetPosition() , glm::vec3{ 0.0f, 0.0f, 0.0f } };
+
+    int maxDepth = 0;
+    
+    UVToDirection(u, v, invProj, invView, ray.direction);
+    TraceRay(ray, world, lights, materials, 1, 1, randState, maxDepth, maxTotalDepth);
+    return maxDepth >= maxTotalDepth;
 }
