@@ -16,10 +16,10 @@
 #include <algorithm>
 #include <execution>
 
-#define WIDTH 512
-#define HEIGHT 256
+#define WIDTH 256
+#define HEIGHT 128
 
-#define SAMPLES 15
+#define SAMPLES 20
 
 #define MAXDEPTH 20
 
@@ -45,7 +45,7 @@ int main()
 
 	// Raytrace
 	double time = 0;
-	int threads = std::thread::hardware_concurrency() - 1;
+	int threads = std::thread::hardware_concurrency() - 2;
 	while(time < 5000 && threads > 1)
 	{
 		time = Render(camera, world, lights, materials, threads);
