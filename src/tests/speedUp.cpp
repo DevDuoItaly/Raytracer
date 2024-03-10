@@ -44,14 +44,18 @@ int main()
 	Hittable* world = db.generateRandomScene(materialsCount);
 
 	// Raytrace
+	double startTime = Render(camera, world, lights, materials, 1);
+	printf("Ended in: %lf\n\n", startTime);
+
 	double time = 0;
-	int threads = std::thread::hardware_concurrency() - 2;
-	while(time < 5000 && threads > 1)
+	int threads = 2;
+	while(time < 5000 && threads <= std::thread::hardware_concurrency() - 2)
 	{
 		time = Render(camera, world, lights, materials, threads);
-		threads -= 2;
+		printf("Speed Up: %lf\n", startTime / time);
+		threads += 2;
 	}
-	
+
 	// Freeing memories
 	delete lights;
 	delete world;
@@ -124,7 +128,5 @@ double Render(Camera& camera, Hittable* world, Light* lights, Material* material
 		waiting = count < totalTasks;
 	}
 
-	double time = t.ElapsedMillis();
-	printf("Ended in: %lf ms\n", time);
-	return time;
+	return t.ElapsedMillis();
 }
