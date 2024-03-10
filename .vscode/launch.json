@@ -1,0 +1,88 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Raytracer GDB",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "RaytracerBuild",
+            "program": "${workspaceFolder}/Raytracer_Redis.ds",
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Raytracer Single Pixel GDB",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "RaytracerSinglePixelBuild",
+            "program": "${workspaceFolder}/Raytracer_SinglePixel.ds",
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Raytracer Speed Up GDB",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "RaytracerSpeedUpBuild",
+            "program": "${workspaceFolder}/Raytracer_SpeedUp.ds",
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Raytracer Cuda",
+            "type": "cuda-gdb",
+            "request": "launch",
+            "preLaunchTask": "RaytracerCudaBuild",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/Raytracer_Cuda.ds"
+        }
+    ]
+}
