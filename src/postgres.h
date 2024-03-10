@@ -133,7 +133,7 @@ public:
     {
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::uniform_real_distribution<float> randPos(-10.0f, 10.0f); //range per coordinate x, y, z
+        std::uniform_real_distribution<float> randPos(-20.0f, 0.0f); //range per coordinate x, y, z
         std::uniform_real_distribution<float> randRadius(1.0f, 3.0f);
         std::uniform_real_distribution<>      randMaterial(0, materials);
 
