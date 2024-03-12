@@ -1,7 +1,7 @@
 # TODO:
 - [x] UML
-- [ ] Use Case diagram
-- [ ] State Chart diagram
+- [x] Use Case diagram
+- [x] State Chart diagram
 - [ ] efficienza, speedup
 - [x] Random Scene generator
 - [x] Monitor
