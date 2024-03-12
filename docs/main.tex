@@ -14,6 +14,9 @@
 \usepackage{amsmath}
 \usepackage{xcolor}
 \usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{siunitx}
+\pgfplotsset{compat=1.17}
 
 \newcommand{\coloredbox}[1]{%
   \textcolor[HTML]{#1}{\rule{1.5ex}{1.5ex}}\hspace{0.3em}}
@@ -429,6 +432,97 @@ In base a questa legge, anche se incrementiamo linearmente il numero di thread (
 
 Questa teoria spiega perché, nei nostri test, l'incremento del numero di thread ha portato a un miglioramento delle prestazioni che tende a stabilizzarsi piuttosto che aumentare proporzionalmente.
 
+\subsubsection{Efficienza e SpeedUp per una scena generata randomicamente}
+Abbiamo implementato una funzione apposita nel nostro programma per generare una scena 3D randomica ad ogni esecuzione. Questa funzione ci consente di testare il programma in scenari diversi e realistici, valutando le sue prestazioni in condizioni variabili e dinamiche. Quest'ultima sfrutta un algoritmo che genera una combinazione di oggetti, luci e materiali casuali. Ogni volta che il programma viene eseguito, viene generata una nuova scena unica. Questo approccio ci permette di valutare l'efficacia del programma nel gestire scenari eterogenei e imprevedibili.
+
+L'implementazione di questa funzione ci consente di valutare le prestazioni del nostro programma in modo più completo e realistico. Possiamo osservare come il programma si comporta in una varietà di scenari e identificare eventuali punti deboli o aree di ottimizzazione.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.8\textwidth]{RandomOutput.png}
+  \caption{Scena randomica generata per il test}
+  \label{fig:RandomOutput}
+\end{figure}
+
+Nella Figura \ref{fig:RandomOutput}, viene mostrato un esempio di scena 3D randomica generata dal nostro programma. Si noti che ogni esecuzione del programma produce una scena unica e dinamica.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=0.8\textwidth,
+      xlabel={Threads},
+      ylabel={Speedup},
+      xmin=0, xmax=20,
+      ymin=0, ymax=10,
+      xtick={2, 4, 6, 8, 10, 12, 14, 16, 18},
+      ytick={0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      legend pos=north east,
+      grid style=dashed,
+    ]
+    \addplot[
+      color=blue,
+      mark=*,
+      ]
+      coordinates {
+      (2, 1.874626)(4, 3.529136)(6, 4.706921)(8, 5.706580)(10, 6.097489)(12, 6.546816)(14, 6.880851)(16, 7.253451)(18, 7.449293)
+      };
+    \addlegendentry{SpeedUp}
+    \label{SpeedUp}
+    \end{axis}
+    
+    \begin{axis}[
+      width=0.8\textwidth,
+      axis y line*=right,
+      axis x line=none,
+      ylabel={Efficiency},
+      xmin=0, xmax=20,
+      ymin=0, ymax=100,
+      xtick={2, 4, 6, 8, 10, 12, 14, 16, 18},
+      ytick={0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
+      legend pos=north east,
+      grid style=dashed,
+    ]
+    \addlegendimage{/pgfplots/refstyle=SpeedUp}\addlegendentry{SpeedUp}
+    \addplot[
+      color=orange,
+      mark=*,
+      ]
+      coordinates {
+      (2, 93.73)(4, 88.23)(6, 78.45)(8, 71.33)(10, 60.98)(12, 54.56)(14, 49.15)(16, 45.33)(18, 41.39)
+      };
+    \addlegendentry{Efficiency}
+    \end{axis}
+  \end{tikzpicture}
+  
+  \caption{Grafico delle prestazioni del programma}
+  \label{fig:performance_graph}
+\end{figure}
+
+\newpage
+\begin{center}
+\noindent
+\resizebox{0.4\textwidth}{!}{%
+\begin{tabular}{|c|c|c|}
+\hline
+\makecell{Threads} & \makecell{SpeedUp} & \makecell{Efficiency}\\
+\hline
+\hline
+2 & 1.874626 & 93.73\\
+4 & 3.529136 & 88.23\\
+6 & 4.706921 & 78.45\\
+8 & 5.706580 & 71.33\\
+10 & 6.097489 & 60.98\\
+12 & 6.546816 & 54.56\\
+14 & 6.880851 & 49.15\\
+16 & 7.253451 & 45.33\\
+18 & 7.449293 & 41.39\\
+\hline
+\end{tabular}
+}
+\end{center}
+
+Nel grafico riportato sopra possiamo osservare come le prestazioni variano al variare del numero dei threads.
 
 \subsection{GPU}
 \subsubsection{Benchmark al variare di Size e Samples}
@@ -499,6 +593,49 @@ Notabilmente, l'implementazione con memoria shared mostra un drastico migliorame
 
 L'ottimizzazione dell'effetto di blur mediante l'uso della memoria shared dimostra quindi come approcci adeguati alla gestione della memoria possano avere un impatto sostanziale sulle prestazioni complessive di algoritmi di elaborazione immagini su GPU.
 
+
+\section{UML Diagram}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=1\textwidth]{ClassDiagram.png}
+  \caption{Diagramma UML}
+  \label{fig:uml_diagram}
+\end{figure}
+
+\newpage
+\section{State Machine Diagram}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.7\textwidth]{StateMachineDiagram.png}
+  \caption{State Machine Diagram}
+  \label{fig:state_machine_diagram}
+\end{figure}
+
+\newpage
+\section{Use Case Diagram}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.8\textwidth]{UseCaseDiagram.png}
+  \caption{Use Case Diagram}
+  \label{fig:use_case_diagram}
+\end{figure}
+
+\section{Esempi di render}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.75\textwidth]{Render1.png}
+  \label{fig:render1}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.75\textwidth]{Render2.png}
+  \label{fig:render1}
+\end{figure}
+
+
+\newpage
 \section{Riferimenti}
 
 \begin{thebibliography}{99}
