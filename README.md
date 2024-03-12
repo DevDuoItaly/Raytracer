@@ -1,11 +1,3 @@
-# TODO:
-- [x] UML
-- [ ] Use Case diagram
-- [ ] State Chart diagram
-- [ ] efficienza, speedup
-- [x] Random Scene generator
-- [x] Monitor
-
 # Rendering con Raytracing
 
 ## Librerie utilizzate

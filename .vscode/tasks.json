@@ -4,15 +4,30 @@
 		{
 			"label": "RaytracerBuild",
 			"type": "shell",
-			"command": "g++ -g -std=c++17 ./src/main.cpp -lhiredis -I./src/ -I./src/vendor/ -I/usr/local/include/ -lpqxx -lpq -ltbb -o Raytracer_Redis.ds"
+			"command": "g++ -g -std=c++17 ./src/main.cpp -lhiredis -I./src/ -I./src/vendor/ -I/usr/local/include/ -lpqxx -lpq -o Raytracer_Redis.ds"
 		},
 		{
 			"label": "RaytracerSinglePixelBuild",
 			"type": "shell",
-			"command": "g++ -g -std=c++17 ./src/tests/singlePixel.cpp -I./src/ -I./src/vendor/ -I/usr/local/include/ -ltbb -o Raytracer_SinglePixel.ds"
+			"command": "g++ -g -std=c++17 ./src/tests/singlePixel.cpp -I./src/ -I./src/vendor/ -I/usr/local/include/ -o Raytracer_SinglePixel.ds"
 		},
 		{
 			"label": "RaytracerSpeedUpBuild",
+			"type": "shell",
+			"command": "g++ -g -std=c++17 ./src/tests/speedUp.cpp -I./src/ -I./src/vendor/ -I/usr/local/include/  -lpqxx -lpq -o Raytracer_SpeedUp.ds"
+		},
+		{
+			"label": "RaytracerBuild - LTBB",
+			"type": "shell",
+			"command": "g++ -g -std=c++17 ./src/main.cpp -lhiredis -I./src/ -I./src/vendor/ -I/usr/local/include/ -lpqxx -lpq -ltbb -o Raytracer_Redis.ds"
+		},
+		{
+			"label": "RaytracerSinglePixelBuild - LTBB",
+			"type": "shell",
+			"command": "g++ -g -std=c++17 ./src/tests/singlePixel.cpp -I./src/ -I./src/vendor/ -I/usr/local/include/ -ltbb -o Raytracer_SinglePixel.ds"
+		},
+		{
+			"label": "RaytracerSpeedUpBuild - LTBB",
 			"type": "shell",
 			"command": "g++ -g -std=c++17 ./src/tests/speedUp.cpp -I./src/ -I./src/vendor/ -I/usr/local/include/  -lpqxx -lpq -ltbb -o Raytracer_SpeedUp.ds"
 		},
