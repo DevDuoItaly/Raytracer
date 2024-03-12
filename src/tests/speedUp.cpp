@@ -47,12 +47,14 @@ int main()
 	double startTime = Render(camera, world, lights, materials, 1);
 	printf("Ended in: %lf\n\n", startTime);
 
-	double time = 0;
+	double time = 0, speedUp = 0;
 	int threads = 2;
 	while(time < 5000 && threads <= std::thread::hardware_concurrency() - 2)
 	{
 		time = Render(camera, world, lights, materials, threads);
-		printf("Speed Up: %lf\n", startTime / time);
+		speedUp = startTime / time;
+		printf("Speed Up: %lf\n", speedUp);
+		printf("Efficiency: %lf%%\n", (speedUp / threads) * 100);
 		threads += 2;
 	}
 

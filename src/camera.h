@@ -9,7 +9,7 @@ class Camera
 {
 public:
     PREFIX Camera(float fov, float width, float height, float nearPlane, float farPlane)
-        : m_Position({ 4.0f, 7.0f, 7.0f })
+        : m_Position({ -3.0f, 6.0f, 10.0f })
     {
         // Projection matrix
         m_ProjectionMatrix = glm::perspectiveFov(glm::radians(fov), (float)width, (float)height, nearPlane, farPlane);
@@ -17,7 +17,7 @@ public:
 
         // View matrix
         glm::vec3 upDirection = glm::vec3(0.0f, 1.0f, 0.0f); //up lungo l'asse y
-        m_ViewMatrix = glm::lookAt(m_Position, glm::vec3{ 0.0f, 2.0f, 0.0f }, upDirection);
+        m_ViewMatrix = glm::lookAt(m_Position, glm::vec3{ 0.0f, 3.0f, 0.0f }, upDirection);
         m_invViewMatrix = glm::inverse(m_ViewMatrix);
     }
 
