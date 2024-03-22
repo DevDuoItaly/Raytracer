@@ -1,17 +1,20 @@
 {
-	"configurations": [
-		{
-			"name": "Raytracer",
-			"includePath": [
-				"${workspaceFolder}/src/**",
-				"${workspaceFolder}/src/vendor/**"
-			],
-			"compilerArgs": [ "-O3", "-o", "Raytracer_Redis.ds" ],
-			"compilerPath": "/usr/bin/g++",
-			"cStandard": "c17",
-			"cppStandard": "c++17",
-			"intelliSenseMode": "${default}"
-		}
-	],
-	"version": 4
+  "configurations": [
+    {
+      "name": "linux-gcc-x64",
+      "includePath": [
+        "${workspaceFolder}/**"
+      ],
+      "compilerArgs": [
+        "-O3",
+        "-o",
+        "Raytracer_Redis.ds"
+      ],
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "${default}",
+      "cppStandard": "${default}",
+      "intelliSenseMode": "linux-gcc-x64"
+    }
+  ],
+  "version": 4
 }

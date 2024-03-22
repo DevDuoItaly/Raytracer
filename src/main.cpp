@@ -250,17 +250,19 @@ int main()
     Material* materials = db.getMaterials(&materialsCount);
 
 	// Init world
-	// Hittable* world = db.generateRandomScene(materialsCount);
+	Hittable* world = db.generateRandomScene(materialsCount);
 	
-	int NUM_SPHERES = 7;
+	/*
+	int NUM_SPHERES = 5;
 	Hittable** l_world = new Hittable*[NUM_SPHERES];
 	l_world[0] = new Sphere({  0.0f, -10000.0f,  0.0f }, 10000.0f, 0);
 	l_world[1] = new Sphere({ -5.0f,  2.5f,     -5.0f }, 2.5f,     4);
 	l_world[2] = new Sphere({  4.0f,  1.75f,    -1.0f }, 1.75f,    2);
 	l_world[3] = new Sphere({  0.0f,  1.5f,      0.0f }, 1.5f,     3);
 	l_world[4] = new Sphere({  2.5f,  0.75f,     3.5f }, 0.75f,    1);
+	*/
 	
-	Hittable* world = new HittablesList(l_world, NUM_SPHERES);
+	//Hittable* world = new HittablesList(l_world, NUM_SPHERES);
 
 	// Raytrace
 	ThreadPool pool(std::thread::hardware_concurrency() - 1);
